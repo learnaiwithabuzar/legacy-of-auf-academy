@@ -1135,6 +1135,34 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }
   }, [topics]);
 
+  // 4. Merge topics into skills whenever skills or topics change
+  useEffect(() => {
+    if (skills.length > 0) {
+      let changed = false;
+      const mergedSkills = skills.map((s) => {
+        const skillTopics = topics.filter(
+          (t) => t.skillName === s.title && t.published !== false
+        );
+
+        const currentIds = (s.topics || []).map((t) => t.id).join(",");
+        const newIds = skillTopics.map((t) => t.id).join(",");
+
+        if (currentIds !== newIds) {
+          changed = true;
+        }
+
+        return {
+          ...s,
+          topics: skillTopics,
+        };
+      });
+
+      if (changed) {
+        setSkills(mergedSkills);
+      }
+    }
+  }, [skills, topics]);
+
   // Auth Operations
   const loginAsAdmin = (password: string): boolean => {
     if (password === "aufadmin786" || password === "admin") {
@@ -1559,19 +1587,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Re-group flat topics into skills structure for full backward compatibility
-  const derivedSkills = skills.map((s) => {
-    const skillTopics = topics.filter((t) => t.skillName === s.title && t.published);
-    return {
-      ...s,
-      topics: skillTopics
-    };
-  });
-
   return (
     <CMSContext.Provider
       value={{
-        skills: derivedSkills,
+        skills,
         topics,
         learningPaths,
         projects,
