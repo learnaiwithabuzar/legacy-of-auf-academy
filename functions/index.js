@@ -1,37 +1,26 @@
-import express from "express";
-import path from "path";
-import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+const { onRequest } = require("firebase-functions/v2/https");
+const { GoogleGenAI } = require("@google/genai");
 
-// Lazy-initialized Gemini client
-let aiClient: GoogleGenAI | null = null;
-
-function getGeminiClient(): GoogleGenAI {
-  if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      throw new Error("GEMINI_API_KEY environment variable is required but not set.");
-    }
-    aiClient = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+// Lazy-initialized Gemini client generator
+function getGeminiClient() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY environment variable is required but not set.");
   }
-  return aiClient;
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
-
-  app.use(express.json());
-
-  // 1. AI Learning Mentor Endpoint (Gemini API)
-  app.post("/api/mentor/generate", async (req, res) => {
+// 1. AI Career Mentor Firebase Function
+exports.generateMentor = onRequest(
+  { cors: true, secrets: ["GEMINI_API_KEY"], maxInstances: 10 },
+  async (req, res) => {
     try {
       const { skill, level, goal } = req.body;
       if (!skill || !level || !goal) {
@@ -39,7 +28,6 @@ async function startServer() {
       }
 
       const client = getGeminiClient();
-      
       const prompt = `You are the Legacy of Auf Academy AI Mentor, named after the legendary Sahabi Abdur Rahman ibn Awf (RA), known for his immense ethical wealth and business brilliance.
 Provide a comprehensive, high-fidelity Islamic career blueprint for a student with:
 - Current Skill: ${skill}
@@ -89,9 +77,9 @@ Important Instructions:
       const responseText = response.text || "{}";
       const parsedData = JSON.parse(responseText.trim());
       res.json(parsedData);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error in AI Learning Mentor:", err);
-      // Fallback response if Gemini is unavailable or errors
+      // Fallback
       res.json({
         isFallback: true,
         learningPath: [
@@ -120,10 +108,13 @@ Important Instructions:
         }
       });
     }
-  });
+  }
+);
 
-  // 2. YouTube Playlist Parsing & Course Generator Endpoint (Gemini API)
-  app.post("/api/youtube/playlist", async (req, res) => {
+// 2. Course Playlist Auto-Generator Firebase Function
+exports.generatePlaylist = onRequest(
+  { cors: true, secrets: ["GEMINI_API_KEY"], maxInstances: 10 },
+  async (req, res) => {
     try {
       const { playlistUrl, skillName, courseName } = req.body;
       if (!playlistUrl) {
@@ -138,7 +129,6 @@ Important Instructions:
       } catch (e) {}
 
       const client = getGeminiClient();
-
       const prompt = `You are a curriculum engineer at Legacy of Auf Academy.
 We need to generate a complete course curriculum of exactly 20 video topics based on a YouTube playlist.
 The playlist URL is: ${playlistUrl} (Playlist ID: ${parsedPlaylistId || "UNKNOWN"})
@@ -180,9 +170,9 @@ Ensure the output is valid, parsable JSON. Make the lesson topics sound highly e
       const responseText = response.text || "{}";
       const parsedData = JSON.parse(responseText.trim());
       res.json(parsedData);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error in YouTube playlist auto-import:", err);
-      // High-fidelity fallback list of 20 topics to guarantee a pristine experience
+      // Fallback
       const fallbackTopics = Array.from({ length: 20 }, (_, i) => {
         const index = i + 1;
         let title = `Lesson ${index}: Foundational Trade & Business Structure`;
@@ -191,7 +181,6 @@ Ensure the output is valid, parsable JSON. Make the lesson topics sound highly e
         let app = `Establish clear, written service agreements (Uqud) for all projects.`;
         let income = `Build a high-ticket retainer service offering this specialized skill to local ethical brands.`;
 
-        // Customize some lessons for variety
         if (index === 1) {
           title = "Lesson 1: The Creed of the Ethical Entrepreneur";
           desc = "Understanding how business and spiritual growth align inside the legacy of Abdur Rahman ibn Awf.";
@@ -244,18 +233,20 @@ Ensure the output is valid, parsable JSON. Make the lesson topics sound highly e
         topics: fallbackTopics
       });
     }
-  });
+  }
+);
 
-  // 2.5. Islamic Business Principles Advisor Endpoint (Gemini API)
-  app.post("/api/advisor/evaluate", async (req, res) => {
+// 3. Islamic Business Principles Advisor Firebase Function
+exports.evaluateBusiness = onRequest(
+  { cors: true, secrets: ["GEMINI_API_KEY"], maxInstances: 10 },
+  async (req, res) => {
     try {
-      const { businessIdea } = req.body;
+      const businessIdea = req.body.businessIdea || req.body.idea;
       if (!businessIdea) {
-        return res.status(400).json({ error: "Missing businessIdea parameter." });
+        return res.status(400).json({ error: "Missing businessIdea or idea parameter." });
       }
 
       const client = getGeminiClient();
-      
       const prompt = `You are the Legacy of Auf Academy Islamic Business Principles Advisor. Your role is to evaluate business ideas against Islamic commerce ethics (Fiqh al-Mu'amalat) and noble trade principles inspired by Abdur Rahman ibn Awf.
 Business Idea: "${businessIdea}"
 
@@ -287,14 +278,12 @@ Ensure the output is valid, parsable JSON. Incorporate authentic Islamic finance
 
       const responseText = response.text || "{}";
       const parsedData = JSON.parse(responseText.trim());
-      // Append mandatory disclaimer to ensure absolute compliance
       parsedData.disclaimer = "This tool provides educational guidance based on authentic Islamic business ethics. It does not issue religious rulings. Consult a qualified scholar for specific rulings.";
       res.json(parsedData);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error in Islamic Business Principles Advisor:", err);
-      // Fallback response with disclaimer
       res.json({
-        businessIdea: req.body.businessIdea,
+        businessIdea: businessIdea,
         ethicalScore: 78,
         verdict: "Conditionally Aligned (Offline Fallback)",
         redFlags: [
@@ -310,26 +299,5 @@ Ensure the output is valid, parsable JSON. Incorporate authentic Islamic finance
         disclaimer: "This tool provides educational guidance based on authentic Islamic business ethics. It does not issue religious rulings. Consult a qualified scholar for specific rulings."
       });
     }
-  });
-
-  // 3. Mount Vite middleware for SPA and Asset serving
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+);
