@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { useCMS, parseCSV } from "../store/cmsStore";
 import { Topic, Skill } from "../types";
+import { aiProvider } from "../services/aiProvider";
 import { 
   Lock, LayoutDashboard, BookOpen, Database, Upload, Download, Search, 
   Plus, Edit, Trash2, Check, AlertCircle, Eye, EyeOff, Film, Link, 
@@ -287,16 +288,16 @@ export default function AdminDashboard() {
   // 2. Drive workflow course selector based on selected skill
   useEffect(() => {
     if (workflowSkill) {
-      const coursesInSkill = Array.from(new Set(
-        topics.filter(t => t.skillName === workflowSkill).map(t => t.courseName).filter(Boolean)
-      )) as string[];
+      const coursesInSkill = courses
+        .filter(c => c.skillName === workflowSkill)
+        .map(c => c.title || c.name);
       if (coursesInSkill.length > 0) {
         setWorkflowCourse(coursesInSkill[0]);
       } else {
         setWorkflowCourse("");
       }
     }
-  }, [workflowSkill, topics]);
+  }, [workflowSkill, courses]);
 
   // 3. Drive workflow topic selector based on skill + course
   useEffect(() => {
@@ -956,7 +957,7 @@ export default function AdminDashboard() {
                     >
                       <option value="">-- Choose Course --</option>
                       {courses.filter(c => c.skillName === workflowSkill).map((c, i) => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
+                        <option key={c.id} value={c.title || c.name}>{c.title || c.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1394,7 +1395,7 @@ export default function AdminDashboard() {
                 >
                   <option value="">All Courses</option>
                   {courses.filter(c => !selectedSkillFilter || c.skillName === selectedSkillFilter).map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                    <option key={c.id} value={c.title || c.name}>{c.title || c.name}</option>
                   ))}
                 </select>
 
@@ -2084,23 +2085,7 @@ export default function AdminDashboard() {
             setPlaylistResult(null);
 
             try {
-              const res = await fetch("/api/youtube/playlist", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  playlistUrl,
-                  skillName: playlistSkill,
-                  courseName: playlistCourse
-                })
-              });
-
-              if (!res.ok) {
-                throw new Error("Failed to reach course generation engine.");
-              }
-
-              const data = await res.json();
+              const data = await aiProvider.generatePlaylist(playlistUrl, playlistSkill, playlistCourse);
               if (data && data.topics && Array.isArray(data.topics)) {
                 const savedList = [];
                 for (let idx = 0; idx < data.topics.length; idx++) {

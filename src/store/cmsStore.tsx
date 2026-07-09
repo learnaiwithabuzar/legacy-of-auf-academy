@@ -496,6 +496,13 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    const coursesCollRef = collection(db, "courses");
+    const unsubCourses = onSnapshot(coursesCollRef, (snap) => {
+      const list: Course[] = [];
+      snap.forEach((d) => list.push(d.data() as Course));
+      setCourses(list);
+    });
+
     // Global certificates listener
     const certCollRef = collection(db, "certificates");
     const unsubCertificates = onSnapshot(certCollRef, (snap) => {
@@ -526,6 +533,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       unsubSkills();
       unsubTopics();
       unsubPaths();
+      unsubCourses();
       unsubCertificates();
       unsubAuth();
     };

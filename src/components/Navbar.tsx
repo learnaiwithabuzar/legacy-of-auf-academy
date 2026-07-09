@@ -90,7 +90,7 @@ export default function Navbar({ currentTab, setCurrentTab }: NavbarProps) {
 
   const navItems = [
     { id: "home", label: "Home", icon: Landmark },
-    { id: "paths", label: "Learning Paths", icon: Compass },
+    { id: "paths", label: "Learning", icon: Compass },
     { id: "certificates", label: "Certificates", icon: Award },
     { id: "projects", label: "Projects", icon: Briefcase },
     { id: "insights", label: "Islamic Business Insights", icon: BookOpen },

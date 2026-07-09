@@ -8,26 +8,10 @@
     ],
     "rewrites": [
       {
-        "source": "/api/mentor/generate",
-        "function": "generateMentor"
-      },
-      {
-        "source": "/api/youtube/playlist",
-        "function": "generatePlaylist"
-      },
-      {
-        "source": "/api/advisor/evaluate",
-        "function": "evaluateBusiness"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
     ]
-  },
-  "functions": {
-    "source": "functions",
-    "codebase": "default"
   },
   "firestore": {
     "rules": "firestore.rules"

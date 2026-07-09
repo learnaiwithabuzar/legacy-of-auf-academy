@@ -40,6 +40,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { Topic, ProjectSubmission, LessonQuiz, StudentNote, AchievementBadge } from "../types";
+import { aiProvider } from "../services/aiProvider";
 
 // Import Enterprise Phase 5 components
 import EnterpriseSecurity from "./EnterpriseSecurity";
@@ -286,12 +287,7 @@ export default function MyProfile({ onWatchVideo }: MyProfileProps) {
     setAdvisorResult(null);
 
     try {
-      const res = await fetch("/api/advisor/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: businessIdea })
-      });
-      const data = await res.json();
+      const data = await aiProvider.evaluateBusiness(businessIdea);
       setAdvisorResult(data);
     } catch (err) {
       console.error("Advisor evaluate request failed:", err);
@@ -365,16 +361,7 @@ export default function MyProfile({ onWatchVideo }: MyProfileProps) {
     setMentorLoading(true);
     setMentorResult(null);
     try {
-      const response = await fetch("/api/mentor/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skill: mentorSkill,
-          level: mentorLevel,
-          goal: mentorGoal
-        })
-      });
-      const data = await response.json();
+      const data = await aiProvider.generateMentor(mentorSkill, mentorLevel, mentorGoal);
       setMentorResult(data);
     } catch (err) {
       console.error("AI Consultation Failed, loading offline blueprint:", err);
