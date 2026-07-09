@@ -1,0 +1,6 @@
+{
+  "name": "Legacy of Auf Academy",
+  "description": "Premium, luxury Islamic-themed educational and entrepreneurship academy inspired by the ethical values of Abdur Rahman ibn Awf (RA).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
