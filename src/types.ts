@@ -47,9 +47,15 @@ export interface LearningPath {
 
 export interface Course {
   id: string;
-  name: string;
-  learningPathId: string;
+  title: string;
+  name: string; // backwards compatibility alias for 'title'
   skillName: string;
+  learningPathId: string;
+  description: string;
+  published: boolean;
+  featured: boolean;
+  iconName: string;
+  sortOrder: number;
 }
 
 export interface Project {

@@ -151,7 +151,7 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
                       ) : (
                         pathCourses.map((course) => {
                           const isCourseSelected = selectedCourseId === course.id;
-                          const courseTopicsCount = topics.filter(t => t.courseName === course.name && t.published !== false).length;
+                          const courseTopicsCount = topics.filter(t => t.courseName === course.title && t.published !== false).length;
                           
                           return (
                             <div
@@ -165,7 +165,7 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
                             >
                               <div className="flex justify-between items-start gap-2">
                                 <h5 className={`font-sans text-xs font-bold tracking-wide ${isCourseSelected ? "text-gold" : "text-white"}`}>
-                                  {course.name}
+                                  {course.title}
                                 </h5>
                                 <ChevronRight className={`h-4 w-4 shrink-0 mt-0.5 transition-transform duration-200 ${isCourseSelected ? "transform rotate-90 text-gold" : "text-neutral-500"}`} />
                               </div>
@@ -200,7 +200,7 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
 
                         const selectedCourse = courses.find(c => c.id === selectedCourseId);
                         const courseTopics = topics.filter(
-                          t => t.courseName === selectedCourse?.name && t.published !== false
+                          t => t.courseName === selectedCourse?.title && t.published !== false
                         );
 
                         if (courseTopics.length === 0) {

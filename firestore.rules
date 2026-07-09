@@ -29,6 +29,21 @@ service cloud.firestore {
       allow write: if isTeacher();
     }
 
+    match /skills/{skillId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
+    match /learningPaths/{pathId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
     match /certificates/{certId} {
       allow read: if true; // Publicly verifiable
       allow write: if isAuthenticated(); // Claims can be submitted, approved by admins

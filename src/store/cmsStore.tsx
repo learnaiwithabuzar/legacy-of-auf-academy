@@ -103,7 +103,7 @@ interface CMSContextType {
   deleteSkill: (skillId: string) => void;
 
   // Courses CRUD
-  addCourse: (courseName: string, learningPathId?: string, skillName?: string) => void;
+  addCourse: (courseName: string, learningPathId?: string, skillName?: string, description?: string, published?: boolean, featured?: boolean, iconName?: string, sortOrder?: number) => void;
   updateCourse: (oldName: string, newName: string) => void;
   deleteCourse: (courseName: string) => void;
 
@@ -1009,21 +1009,21 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
           console.log("Seeding courses...");
           const DEFAULT_COURSES = [
             // path-1
-            { id: "course-1", name: "AI & Automation Foundation", learningPathId: "path-1", skillName: "AI & Automation" },
-            { id: "course-2", name: "Crafting Persuasive, Honest Offers with Copywriting", learningPathId: "path-1", skillName: "Copywriting" },
-            { id: "course-3", name: "Client Acquisition & Freelancing Systems", learningPathId: "path-1", skillName: "AI & Automation" },
-            { id: "course-4", name: "Riba-Free Growth & Financial Stability", learningPathId: "path-1", skillName: "AI & Automation" },
+            { id: "course-1", title: "AI & Automation Foundation", name: "AI & Automation Foundation", learningPathId: "path-1", skillName: "AI & Automation", description: "Learn the fundamentals of AI tools, automation setups, and ethical workflows.", published: true, featured: true, iconName: "Cpu", sortOrder: 1 },
+            { id: "course-2", title: "Crafting Persuasive, Honest Offers with Copywriting", name: "Crafting Persuasive, Honest Offers with Copywriting", learningPathId: "path-1", skillName: "Copywriting", description: "Write marketing copy that builds trust and delivers massive, honest value.", published: true, featured: true, iconName: "PenTool", sortOrder: 2 },
+            { id: "course-3", title: "Client Acquisition & Freelancing Systems", name: "Client Acquisition & Freelancing Systems", learningPathId: "path-1", skillName: "AI & Automation", description: "Build scalable acquisition funnels and manage high-paying clients cleanly.", published: true, featured: false, iconName: "Users", sortOrder: 3 },
+            { id: "course-4", title: "Riba-Free Growth & Financial Stability", name: "Riba-Free Growth & Financial Stability", learningPathId: "path-1", skillName: "AI & Automation", description: "Construct solid financial systems aligned with Islamic business ethics.", published: true, featured: false, iconName: "TrendingUp", sortOrder: 4 },
 
             // path-2
-            { id: "course-5", name: "Prophetic Business Philosophy & Servant Leadership", learningPathId: "path-2", skillName: "Digital Marketing" },
-            { id: "course-6", name: "Building the Brand Story & Ethical Scaling Ads", learningPathId: "path-2", skillName: "Digital Marketing" },
-            { id: "course-7", name: "Sovereign Supply Chains & E-commerce Architecture", learningPathId: "path-2", skillName: "E-commerce" },
-            { id: "course-8", name: "High-Stakes Public Speaking & Investor Pitching", learningPathId: "path-2", skillName: "Digital Marketing" },
+            { id: "course-5", title: "Prophetic Business Philosophy & Servant Leadership", name: "Prophetic Business Philosophy & Servant Leadership", learningPathId: "path-2", skillName: "Digital Marketing", description: "Master the mindset of ethical trading, prophetic commerce, and servant leadership.", published: true, featured: true, iconName: "Sparkles", sortOrder: 5 },
+            { id: "course-6", title: "Building the Brand Story & Ethical Scaling Ads", name: "Building the Brand Story & Ethical Scaling Ads", learningPathId: "path-2", skillName: "Digital Marketing", description: "Learn ethical advertising, narrative-driven scaling, and direct-response marketing.", published: true, featured: false, iconName: "Megaphone", sortOrder: 6 },
+            { id: "course-7", title: "Sovereign Supply Chains & E-commerce Architecture", name: "Sovereign Supply Chains & E-commerce Architecture", learningPathId: "path-2", skillName: "E-commerce", description: "Architect a direct-to-consumer online business from raw inventory to custom delivery.", published: true, featured: true, iconName: "ShoppingBag", sortOrder: 7 },
+            { id: "course-8", title: "High-Stakes Public Speaking & Investor Pitching", name: "High-Stakes Public Speaking & Investor Pitching", learningPathId: "path-2", skillName: "Digital Marketing", description: "Prepare, design, and deliver powerhouse ethical business presentations for capital partners.", published: true, featured: false, iconName: "Mic", sortOrder: 8 },
 
             // path-3
-            { id: "course-9", name: "Foundations of Shariah-Compliant Investments", learningPathId: "path-3", skillName: "E-commerce" },
-            { id: "course-10", name: "Zakat Optimization and Equity Structuring", learningPathId: "path-3", skillName: "E-commerce" },
-            { id: "course-11", name: "Building Generational Waqf & Philanthropic Legacies", learningPathId: "path-3", skillName: "E-commerce" },
+            { id: "course-9", title: "Foundations of Shariah-Compliant Investments", name: "Foundations of Shariah-Compliant Investments", learningPathId: "path-3", skillName: "E-commerce", description: "Identify, structure, and invest in ethical and halaal financial securities.", published: true, featured: true, iconName: "Percent", sortOrder: 9 },
+            { id: "course-10", title: "Zakat Optimization and Equity Structuring", name: "Zakat Optimization and Equity Structuring", learningPathId: "path-3", skillName: "E-commerce", description: "Optimize zakat compliance across complex business equities and legal structures.", published: true, featured: false, iconName: "Layers", sortOrder: 10 },
+            { id: "course-11", title: "Building Generational Waqf & Philanthropic Legacies", name: "Building Generational Waqf & Philanthropic Legacies", learningPathId: "path-3", skillName: "E-commerce", description: "Design a long-term waqf system to generate permanent social impact and secure your lineage.", published: true, featured: true, iconName: "Gift", sortOrder: 11 },
           ];
           for (const c of DEFAULT_COURSES) {
             await setDoc(doc(coursesRef, c.id), c);
@@ -1199,7 +1199,19 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
       const list: Course[] = [];
       snap.forEach((docSnap) => {
-        list.push(docSnap.data() as Course);
+        const data = docSnap.data();
+        list.push({
+          id: docSnap.id,
+          title: data.title || data.name || "",
+          name: data.name || data.title || "",
+          skillName: data.skillName || "AI & Automation",
+          learningPathId: data.learningPathId || "path-1",
+          description: data.description || "",
+          published: data.published ?? true,
+          featured: data.featured ?? false,
+          iconName: data.iconName || "BookOpen",
+          sortOrder: data.sortOrder ?? 0,
+        } as Course);
       });
       setCourses(list);
     });
@@ -1325,24 +1337,37 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   };
 
   // --- COURSES CRUD ---
-  const addCourse = async (courseName: string, learningPathId?: string, skillName?: string) => {
+  const addCourse = async (
+    courseName: string,
+    learningPathId?: string,
+    skillName?: string,
+    description?: string,
+    published?: boolean,
+    featured?: boolean,
+    iconName?: string,
+    sortOrder?: number
+  ) => {
     try {
       const id = `course-${Date.now()}`;
       let resolvedPathId = learningPathId || "path-1";
       if (!learningPathId && skillName) {
         if (skillName === "AI & Automation" || skillName === "Copywriting") {
           resolvedPathId = "path-1";
-        } else if (skillName === "Digital Marketing") {
-          resolvedPathId = "path-2";
-        } else if (skillName === "E-commerce") {
+        } else if (skillName === "Digital Marketing" || skillName === "E-commerce") {
           resolvedPathId = "path-2";
         }
       }
       const newCourse: Course = {
         id,
+        title: courseName,
         name: courseName,
         learningPathId: resolvedPathId,
-        skillName: skillName || "AI & Automation"
+        skillName: skillName || "AI & Automation",
+        description: description || `Study module for ${courseName}.`,
+        published: published ?? true,
+        featured: featured ?? false,
+        iconName: iconName || "BookOpen",
+        sortOrder: sortOrder ?? 0,
       };
       await setDoc(doc(db, "courses", id), newCourse);
     } catch (e) {
@@ -1350,11 +1375,21 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateCourse = async (oldName: string, newName: string) => {
+  const updateCourse = async (
+    oldName: string,
+    newName: string,
+    updatedFields?: Partial<Course>
+  ) => {
     try {
-      const existingCourse = courses.find(c => c.name === oldName);
+      const existingCourse = courses.find(c => c.name === oldName || c.title === oldName);
       if (existingCourse) {
-        await updateDoc(doc(db, "courses", existingCourse.id), { name: newName });
+        const docRef = doc(db, "courses", existingCourse.id);
+        const updates = {
+          title: newName,
+          name: newName,
+          ...updatedFields
+        };
+        await updateDoc(docRef, updates);
       }
 
       const topicsToUpdate = topics.filter(t => t.courseName === oldName);
@@ -1373,7 +1408,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
   const deleteCourse = async (courseName: string) => {
     try {
-      const existingCourse = courses.find(c => c.name === courseName);
+      const existingCourse = courses.find(c => c.name === courseName || c.title === courseName);
       if (existingCourse) {
         await deleteDoc(doc(db, "courses", existingCourse.id));
       }
@@ -1399,7 +1434,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
       // Auto-create course module if it doesn't exist
       if (newTopic.courseName) {
-        const courseExists = courses.some(c => c.name === newTopic.courseName);
+        const courseExists = courses.some(c => c.name === newTopic.courseName || c.title === newTopic.courseName);
         if (!courseExists) {
           await addCourse(newTopic.courseName, undefined, newTopic.skillName);
         }
@@ -1421,7 +1456,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
       // Auto-create course module if it doesn't exist
       if (updatedFields.courseName) {
-        const courseExists = courses.some(c => c.name === updatedFields.courseName);
+        const courseExists = courses.some(c => c.name === updatedFields.courseName || c.title === updatedFields.courseName);
         if (!courseExists) {
           await addCourse(updatedFields.courseName, undefined, updatedFields.skillName || "AI & Automation");
         }
