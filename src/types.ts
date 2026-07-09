@@ -45,6 +45,13 @@ export interface LearningPath {
   steps: string[];
 }
 
+export interface Course {
+  id: string;
+  name: string;
+  learningPathId: string;
+  skillName: string;
+}
+
 export interface Project {
   id: string;
   studentName: string;

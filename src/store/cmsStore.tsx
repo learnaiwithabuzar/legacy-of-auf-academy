@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Skill, Topic, LearningPath, Project, BlogArticle, BusinessChallenge, StudentProfile, TopicProgress, StudentBookmark, StudentNote, ProjectSubmission, QuizQuestion, LessonQuiz, SystemNotification, SimulatedEmail } from "../types";
+import { Skill, Topic, LearningPath, Project, BlogArticle, BusinessChallenge, StudentProfile, TopicProgress, StudentBookmark, StudentNote, ProjectSubmission, QuizQuestion, LessonQuiz, SystemNotification, SimulatedEmail, Course } from "../types";
 import {
   SKILLS_DATA,
   LEARNING_PATHS_DATA,
@@ -95,7 +95,7 @@ interface CMSContextType {
   projects: Project[];
   blogArticles: BlogArticle[];
   challenges: BusinessChallenge[];
-  courses: string[]; // List of unique courses
+  courses: Course[]; // List of courses with proper metadata
 
   // Skills CRUD
   addSkill: (skill: Omit<Skill, "topics">) => void;
@@ -103,7 +103,7 @@ interface CMSContextType {
   deleteSkill: (skillId: string) => void;
 
   // Courses CRUD
-  addCourse: (courseName: string) => void;
+  addCourse: (courseName: string, learningPathId?: string, skillName?: string) => void;
   updateCourse: (oldName: string, newName: string) => void;
   deleteCourse: (courseName: string) => void;
 
@@ -204,7 +204,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [blogArticles, setBlogArticles] = useState<BlogArticle[]>([]);
   const [challenges, setChallenges] = useState<BusinessChallenge[]>([]);
-  const [courses, setCourses] = useState<string[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return localStorage.getItem("loa_is_admin") === "true";
   });
@@ -991,28 +991,81 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeDatabase = async () => {
       try {
-        const topicsRef = collection(db, "topics");
-        const topicsSnap = await getDocs(topicsRef);
-
-        if (topicsSnap.empty) {
-          console.log("Firestore is empty! Seeding default database data...");
-
-          // A. Seed Skills
-          const skillsRef = collection(db, "skills");
+        // A. Seed Skills
+        const skillsRef = collection(db, "skills");
+        const skillsSnap = await getDocs(skillsRef);
+        if (skillsSnap.empty) {
+          console.log("Seeding skills...");
           for (const s of SKILLS_DATA) {
             const { topics: nestedTopics, ...skillMeta } = s;
             await setDoc(doc(skillsRef, s.id), skillMeta);
+          }
+        }
 
-            // B. Seed Topics inside Skills
+        // B. Seed Courses
+        const coursesRef = collection(db, "courses");
+        const coursesSnap = await getDocs(coursesRef);
+        if (coursesSnap.empty) {
+          console.log("Seeding courses...");
+          const DEFAULT_COURSES = [
+            // path-1
+            { id: "course-1", name: "AI & Automation Foundation", learningPathId: "path-1", skillName: "AI & Automation" },
+            { id: "course-2", name: "Crafting Persuasive, Honest Offers with Copywriting", learningPathId: "path-1", skillName: "Copywriting" },
+            { id: "course-3", name: "Client Acquisition & Freelancing Systems", learningPathId: "path-1", skillName: "AI & Automation" },
+            { id: "course-4", name: "Riba-Free Growth & Financial Stability", learningPathId: "path-1", skillName: "AI & Automation" },
+
+            // path-2
+            { id: "course-5", name: "Prophetic Business Philosophy & Servant Leadership", learningPathId: "path-2", skillName: "Digital Marketing" },
+            { id: "course-6", name: "Building the Brand Story & Ethical Scaling Ads", learningPathId: "path-2", skillName: "Digital Marketing" },
+            { id: "course-7", name: "Sovereign Supply Chains & E-commerce Architecture", learningPathId: "path-2", skillName: "E-commerce" },
+            { id: "course-8", name: "High-Stakes Public Speaking & Investor Pitching", learningPathId: "path-2", skillName: "Digital Marketing" },
+
+            // path-3
+            { id: "course-9", name: "Foundations of Shariah-Compliant Investments", learningPathId: "path-3", skillName: "E-commerce" },
+            { id: "course-10", name: "Zakat Optimization and Equity Structuring", learningPathId: "path-3", skillName: "E-commerce" },
+            { id: "course-11", name: "Building Generational Waqf & Philanthropic Legacies", learningPathId: "path-3", skillName: "E-commerce" },
+          ];
+          for (const c of DEFAULT_COURSES) {
+            await setDoc(doc(coursesRef, c.id), c);
+          }
+        }
+
+        // C. Seed Learning Paths
+        const pathsRef = collection(db, "learningPaths");
+        const pathsSnap = await getDocs(pathsRef);
+        if (pathsSnap.empty) {
+          console.log("Seeding learningPaths...");
+          for (const p of LEARNING_PATHS_DATA) {
+            await setDoc(doc(pathsRef, p.id), p);
+          }
+        }
+
+        // D. Seed Topics
+        const topicsRef = collection(db, "topics");
+        const topicsSnap = await getDocs(topicsRef);
+        if (topicsSnap.empty) {
+          console.log("Seeding topics...");
+          for (const s of SKILLS_DATA) {
+            let resolvedCourseName = "AI & Automation Foundation";
+            if (s.title === "AI & Automation") {
+              resolvedCourseName = "AI & Automation Foundation";
+            } else if (s.title === "Digital Marketing") {
+              resolvedCourseName = "Prophetic Business Philosophy & Servant Leadership";
+            } else if (s.title === "E-commerce") {
+              resolvedCourseName = "Sovereign Supply Chains & E-commerce Architecture";
+            } else if (s.title === "Copywriting") {
+              resolvedCourseName = "Crafting Persuasive, Honest Offers with Copywriting";
+            }
+
             for (const t of s.topics) {
               const fullTopic: Topic = {
                 ...t,
                 skillName: s.title,
-                courseName: "Legacy Fundamentals Module",
+                courseName: resolvedCourseName,
                 shortDescription: `${t.title} lesson overview covering business logic and execution plans.`,
                 thumbnailUrl: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600`,
                 youtubePlaylistLink: "",
-                certificateLink: `/certificates?course=${encodeURIComponent("Legacy Fundamentals")}`,
+                certificateLink: `/certificates?course=${encodeURIComponent(resolvedCourseName)}`,
                 officialWebsiteLink: "https://legacyofauf.academy",
                 notesPdfLink: "https://legacyofauf.academy/notes/lesson-guide.pdf",
                 assignmentPdf: "https://legacyofauf.academy/notes/assignment.pdf",
@@ -1026,38 +1079,89 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
                 tags: `${s.title}, Ethical Business, Auf Academy`,
                 featured: true,
                 published: true,
-                videoUrl: "" // Clear hardcoded placeholder
+                videoUrl: ""
               };
               await setDoc(doc(topicsRef, t.id), fullTopic);
             }
           }
+        } else {
+          // Heal existing topics to ensure correct data-linking fields are not empty or obsolete
+          topicsSnap.forEach(async (docSnap) => {
+            const data = docSnap.data() as Topic;
+            let updated = false;
+            const updatedFields: Partial<Topic> = {};
 
-          // C. Seed Learning Paths
-          const pathsRef = collection(db, "learningPaths");
-          for (const p of LEARNING_PATHS_DATA) {
-            await setDoc(doc(pathsRef, p.id), p);
-          }
+            if (!data.skillName) {
+              if (data.id.startsWith("ai-")) {
+                updatedFields.skillName = "AI & Automation";
+              } else if (data.id.startsWith("dm-")) {
+                updatedFields.skillName = "Digital Marketing";
+              } else if (data.id.startsWith("eco-")) {
+                updatedFields.skillName = "E-commerce";
+              } else if (data.id.startsWith("copy-")) {
+                updatedFields.skillName = "Copywriting";
+              } else {
+                updatedFields.skillName = "AI & Automation";
+              }
+              updated = true;
+            }
 
-          // D. Seed Projects
-          const projectsRef = collection(db, "projects");
+            const currentSkillName = updatedFields.skillName || data.skillName;
+
+            if (!data.courseName || data.courseName === "Legacy Fundamentals Module") {
+              let resolvedCourseName = "AI & Automation Foundation";
+              if (currentSkillName === "AI & Automation") {
+                resolvedCourseName = "AI & Automation Foundation";
+              } else if (currentSkillName === "Digital Marketing") {
+                resolvedCourseName = "Prophetic Business Philosophy & Servant Leadership";
+              } else if (currentSkillName === "E-commerce") {
+                resolvedCourseName = "Sovereign Supply Chains & E-commerce Architecture";
+              } else if (currentSkillName === "Copywriting") {
+                resolvedCourseName = "Crafting Persuasive, Honest Offers with Copywriting";
+              }
+              updatedFields.courseName = resolvedCourseName;
+              updated = true;
+            }
+
+            if (data.published === undefined) {
+              updatedFields.published = true;
+              updated = true;
+            }
+
+            if (updated) {
+              await updateDoc(doc(db, "topics", data.id), updatedFields);
+            }
+          });
+        }
+
+        // E. Seed Projects
+        const projectsRef = collection(db, "projects");
+        const projectsSnap = await getDocs(projectsRef);
+        if (projectsSnap.empty) {
           for (const pr of PROJECTS_DATA) {
             await setDoc(doc(projectsRef, pr.id), pr);
           }
+        }
 
-          // E. Seed Blog Articles
-          const blogRef = collection(db, "blogArticles");
+        // F. Seed Blog Articles
+        const blogRef = collection(db, "blogArticles");
+        const blogSnap = await getDocs(blogRef);
+        if (blogSnap.empty) {
           for (const b of BLOG_DATA) {
             await setDoc(doc(blogRef, b.id), b);
           }
+        }
 
-          // F. Seed Business Challenges
-          const challengesRef = collection(db, "challenges");
+        // G. Seed Business Challenges
+        const challengesRef = collection(db, "challenges");
+        const challengesSnap = await getDocs(challengesRef);
+        if (challengesSnap.empty) {
           for (const c of CHALLENGES_DATA) {
             await setDoc(doc(challengesRef, c.id), c);
           }
-
-          console.log("Database successfully seeded!");
         }
+
+        console.log("Database successfully seeded!");
       } catch (error) {
         console.error("Failed to seed Firestore database:", error);
       }
@@ -1079,7 +1183,6 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const unsubSkills = onSnapshot(collection(db, "skills"), (snap) => {
       const list: Skill[] = [];
       snap.forEach((docSnap) => {
-        // topics are dynamically populated below in derivedSkills
         list.push({ ...(docSnap.data() as Skill), topics: [] });
       });
       setSkills(list);
@@ -1091,6 +1194,14 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as LearningPath);
       });
       setLearningPaths(list);
+    });
+
+    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
+      const list: Course[] = [];
+      snap.forEach((docSnap) => {
+        list.push(docSnap.data() as Course);
+      });
+      setCourses(list);
     });
 
     const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
@@ -1121,19 +1232,12 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       unsubTopics();
       unsubSkills();
       unsubPaths();
+      unsubCourses();
       unsubProjects();
       unsubBlog();
       unsubChallenges();
     };
   }, []);
-
-  // 3. Drive Courses automatically from topics
-  useEffect(() => {
-    if (topics.length > 0) {
-      const uniqueCourses = Array.from(new Set(topics.map(t => t.courseName).filter(Boolean))) as string[];
-      setCourses(uniqueCourses);
-    }
-  }, [topics]);
 
   // 4. Merge topics into skills whenever skills or topics change
   useEffect(() => {
@@ -1221,14 +1325,38 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   };
 
   // --- COURSES CRUD ---
-  const addCourse = (courseName: string) => {
-    if (!courses.includes(courseName)) {
-      setCourses(prev => [...prev, courseName]);
+  const addCourse = async (courseName: string, learningPathId?: string, skillName?: string) => {
+    try {
+      const id = `course-${Date.now()}`;
+      let resolvedPathId = learningPathId || "path-1";
+      if (!learningPathId && skillName) {
+        if (skillName === "AI & Automation" || skillName === "Copywriting") {
+          resolvedPathId = "path-1";
+        } else if (skillName === "Digital Marketing") {
+          resolvedPathId = "path-2";
+        } else if (skillName === "E-commerce") {
+          resolvedPathId = "path-2";
+        }
+      }
+      const newCourse: Course = {
+        id,
+        name: courseName,
+        learningPathId: resolvedPathId,
+        skillName: skillName || "AI & Automation"
+      };
+      await setDoc(doc(db, "courses", id), newCourse);
+    } catch (e) {
+      console.error("Error adding course:", e);
     }
   };
 
   const updateCourse = async (oldName: string, newName: string) => {
     try {
+      const existingCourse = courses.find(c => c.name === oldName);
+      if (existingCourse) {
+        await updateDoc(doc(db, "courses", existingCourse.id), { name: newName });
+      }
+
       const topicsToUpdate = topics.filter(t => t.courseName === oldName);
       for (const t of topicsToUpdate) {
         await updateDoc(doc(db, "topics", t.id), { courseName: newName });
@@ -1245,6 +1373,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
   const deleteCourse = async (courseName: string) => {
     try {
+      const existingCourse = courses.find(c => c.name === courseName);
+      if (existingCourse) {
+        await deleteDoc(doc(db, "courses", existingCourse.id));
+      }
+
       const topicsToDelete = topics.filter(t => t.courseName === courseName);
       for (const t of topicsToDelete) {
         await deleteDoc(doc(db, "topics", t.id));
@@ -1263,6 +1396,15 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         id
       };
       await setDoc(doc(db, "topics", id), fullTopic);
+
+      // Auto-create course module if it doesn't exist
+      if (newTopic.courseName) {
+        const courseExists = courses.some(c => c.name === newTopic.courseName);
+        if (!courseExists) {
+          await addCourse(newTopic.courseName, undefined, newTopic.skillName);
+        }
+      }
+
       await addNotification(
         "New Video Lesson Published",
         `A new video lesson titled "${fullTopic.title}" has been published in course "${fullTopic.courseName || 'Legacy Fundamentals'}"!`,
@@ -1276,6 +1418,14 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const updateTopic = async (topicId: string, updatedFields: Partial<Topic>) => {
     try {
       await updateDoc(doc(db, "topics", topicId), updatedFields);
+
+      // Auto-create course module if it doesn't exist
+      if (updatedFields.courseName) {
+        const courseExists = courses.some(c => c.name === updatedFields.courseName);
+        if (!courseExists) {
+          await addCourse(updatedFields.courseName, undefined, updatedFields.skillName || "AI & Automation");
+        }
+      }
     } catch (e) {
       console.error("Error updating topic:", e);
     }

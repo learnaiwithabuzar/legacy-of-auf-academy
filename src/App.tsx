@@ -65,7 +65,7 @@ export default function App() {
 
         {currentTab === "paths" && (
           <div className="animate-fade-in">
-            <LearningPaths />
+            <LearningPaths onWatchVideo={handleWatchVideo} />
           </div>
         )}
 

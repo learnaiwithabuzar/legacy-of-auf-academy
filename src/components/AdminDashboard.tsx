@@ -192,7 +192,7 @@ export default function AdminDashboard() {
       videoUrl: "",
       difficulty: "Beginner",
       skillName: skills[0]?.title || "",
-      courseName: courses[0] || "General Core Module",
+      courseName: courses[0]?.name || "General Core Module",
       shortDescription: "",
       thumbnailUrl: "",
       youtubePlaylistLink: "",
@@ -955,8 +955,8 @@ export default function AdminDashboard() {
                       className="w-full rounded-lg border border-neutral-800 bg-black/60 px-3 py-2.5 text-xs text-white focus:border-gold focus:outline-none cursor-pointer"
                     >
                       <option value="">-- Choose Course --</option>
-                      {courses.map((c, i) => (
-                        <option key={i} value={c}>{c}</option>
+                      {courses.filter(c => c.skillName === workflowSkill).map((c, i) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1393,8 +1393,8 @@ export default function AdminDashboard() {
                   className="rounded-lg border border-neutral-800 bg-black/60 px-3 py-2 text-xs text-neutral-300 focus:border-gold focus:outline-none cursor-pointer"
                 >
                   <option value="">All Courses</option>
-                  {courses.map(c => (
-                    <option key={c} value={c}>{c}</option>
+                  {courses.filter(c => !selectedSkillFilter || c.skillName === selectedSkillFilter).map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
 
@@ -1429,7 +1429,7 @@ export default function AdminDashboard() {
                       videoUrl: "",
                       difficulty: "Beginner",
                       skillName: skills[0]?.title || "",
-                      courseName: courses[0] || "General Core Module",
+                      courseName: courses[0]?.name || "General Core Module",
                       shortDescription: "",
                       thumbnailUrl: "",
                       youtubePlaylistLink: "",
@@ -1689,14 +1689,17 @@ export default function AdminDashboard() {
 
                 <div className="space-y-2">
                   {courses.map((course, idx) => (
-                    <div key={idx} className="flex items-center justify-between rounded-lg border border-neutral-900 bg-black/60 px-4 py-3 text-xs">
-                      <span className="font-sans text-white font-medium">{course}</span>
+                    <div key={course.id} className="flex items-center justify-between rounded-lg border border-neutral-900 bg-black/60 px-4 py-3 text-xs">
+                      <div>
+                        <span className="font-sans text-white font-medium">{course.name}</span>
+                        <span className="block font-mono text-[9px] text-neutral-500 mt-0.5">{course.skillName} • {course.learningPathId}</span>
+                      </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            const newName = prompt(`Rename "${course}" to:`, course);
-                            if (newName && newName !== course) {
-                              updateCourse(course, newName);
+                            const newName = prompt(`Rename "${course.name}" to:`, course.name);
+                            if (newName && newName !== course.name) {
+                              updateCourse(course.name, newName);
                             }
                           }}
                           className="text-neutral-400 hover:text-gold"
@@ -1705,8 +1708,8 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Delete Course "${course}" and delete all its associated topics?`)) {
-                              deleteCourse(course);
+                            if (confirm(`Delete Course "${course.name}" and delete all its associated topics?`)) {
+                              deleteCourse(course.name);
                             }
                           }}
                           className="text-red-400 hover:text-red-300 ml-2"
@@ -2216,7 +2219,7 @@ export default function AdminDashboard() {
                           className="w-full rounded border border-neutral-800 bg-black/60 px-3.5 py-2.5 text-white focus:border-gold focus:outline-none"
                         />
                         <datalist id="existing-courses">
-                          {courses.map(c => <option key={c} value={c} />)}
+                          {courses.map(c => <option key={c.id} value={c.name} />)}
                         </datalist>
                         <span className="block text-[10px] text-neutral-500">Specify the course module name.</span>
                       </div>
@@ -2694,7 +2697,7 @@ export default function AdminDashboard() {
                     />
                     <datalist id="existing-courses">
                       {courses.map((c, i) => (
-                        <option key={i} value={c} />
+                        <option key={c.id} value={c.name} />
                       ))}
                     </datalist>
                   </div>
