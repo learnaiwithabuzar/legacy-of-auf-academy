@@ -9,6 +9,77 @@ import {
   HelpCircle, Sparkles, Folder, Calendar, Users, Award, ExternalLink
 } from "lucide-react";
 
+// Helper functions for tolerant skill and course matching across different schemas
+function normalize(value: any): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function skillMatches(item: any, selectedSkill: any): boolean {
+  if (!item || !selectedSkill) return false;
+  
+  const itemFields = [
+    item.skillName,
+    item.skill,
+    item.skillId,
+    item.category,
+    item.parentSkill,
+    item.title,
+    item.id
+  ].map(normalize).filter(Boolean);
+
+  if (itemFields.length === 0) return false;
+
+  const targetFields = typeof selectedSkill === "object" 
+    ? [
+        selectedSkill.skillName,
+        selectedSkill.skill,
+        selectedSkill.skillId,
+        selectedSkill.category,
+        selectedSkill.parentSkill,
+        selectedSkill.title,
+        selectedSkill.id
+      ].map(normalize).filter(Boolean)
+    : [normalize(selectedSkill)].filter(Boolean);
+
+  if (targetFields.length === 0) return false;
+
+  return itemFields.some(itemVal => 
+    targetFields.some(targetVal => itemVal === targetVal)
+  );
+}
+
+function courseMatches(item: any, selectedCourse: any): boolean {
+  if (!item || !selectedCourse) return false;
+
+  const itemFields = [
+    item.courseName,
+    item.course,
+    item.courseId,
+    item.title,
+    item.name,
+    item.id
+  ].map(normalize).filter(Boolean);
+
+  if (itemFields.length === 0) return false;
+
+  const targetFields = typeof selectedCourse === "object" 
+    ? [
+        selectedCourse.courseName,
+        selectedCourse.course,
+        selectedCourse.courseId,
+        selectedCourse.title,
+        selectedCourse.name,
+        selectedCourse.id
+      ].map(normalize).filter(Boolean)
+    : [normalize(selectedCourse)].filter(Boolean);
+
+  if (targetFields.length === 0) return false;
+
+  return itemFields.some(itemVal => 
+    targetFields.some(targetVal => itemVal === targetVal)
+  );
+}
+
 export default function AdminDashboard() {
   const {
     skills,
@@ -170,6 +241,52 @@ export default function AdminDashboard() {
     }
   };
 
+  // Helper to validate and resolve skill and course
+  const validateAndResolveSkillAndCourse = (formSkillName: string, formCourseName: string) => {
+    // Before validation, rebuild both values from the selected dropdowns/inputs to avoid stale state.
+    const resolvedSkill = (formSkillName || workflowSkill || "").trim();
+    const resolvedCourse = (formCourseName || workflowCourse || "").trim();
+
+    if (!resolvedSkill) {
+      alert("Please specify a Skill!");
+      return { isValid: false, finalSkillName: "", finalCourseName: "", selectedSkill: null, selectedCourse: null };
+    }
+
+    if (!resolvedCourse) {
+      alert("Please specify a Course Module!");
+      return { isValid: false, finalSkillName: "", finalCourseName: "", selectedSkill: null, selectedCourse: null };
+    }
+
+    const selectedSkill = skills.find(s => skillMatches(s, resolvedSkill));
+    const finalSkillName = selectedSkill ? selectedSkill.title : resolvedSkill;
+
+    const selectedCourse = courses.find(c => courseMatches(c, resolvedCourse));
+    const finalCourseName = selectedCourse 
+      ? (selectedCourse.title || selectedCourse.name || (selectedCourse as any).courseName || (selectedCourse as any).courseId || selectedCourse.id || resolvedCourse) 
+      : resolvedCourse;
+
+    return {
+      isValid: true,
+      finalSkillName,
+      finalCourseName,
+      selectedSkill,
+      selectedCourse
+    };
+  };
+
+  // State synchronization effects to automatically update topicForm
+  useEffect(() => {
+    if (workflowSkill) {
+      setTopicForm(prev => ({ ...prev, skillName: workflowSkill }));
+    }
+  }, [workflowSkill]);
+
+  useEffect(() => {
+    if (workflowCourse) {
+      setTopicForm(prev => ({ ...prev, courseName: workflowCourse }));
+    }
+  }, [workflowCourse]);
+
   // Save Topic (Add/Edit)
   const handleSaveTopic = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,28 +295,21 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Resolve course and skill using both old and new schema
-    const selectedCourse = courses.find(c => 
-      (c.title && c.title === topicForm.courseName) || 
-      (c.name && c.name === topicForm.courseName)
-    );
+    const { isValid, finalSkillName, finalCourseName, selectedSkill, selectedCourse } = 
+      validateAndResolveSkillAndCourse(topicForm.skillName, topicForm.courseName);
 
-    const finalCourseName = selectedCourse 
-      ? (selectedCourse.title || selectedCourse.name) 
-      : topicForm.courseName;
+    if (!isValid) return;
 
-    const finalSkillName = selectedCourse 
-      ? selectedCourse.skillName 
-      : topicForm.skillName;
-
-    if (!finalSkillName) {
-      alert("Please specify a Skill Name!");
-      return;
-    }
-    if (!finalCourseName) {
-      alert("Please specify a Course Name!");
-      return;
-    }
+    // 9. Add console logs before saving:
+    console.log({
+      workflowSkill,
+      workflowCourse,
+      topicForm,
+      selectedSkill,
+      selectedCourse,
+      finalSkillName,
+      finalCourseName
+    });
 
     const topicData = {
       ...topicForm,
@@ -289,109 +399,21 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Resolve selected course and skill supporting old/new schema and current workflow selection
-    const dropdownCourseTerm = (workflowCourse || "").trim().toLowerCase();
-    const formCourseTerm = (topicForm.courseName || "").trim().toLowerCase();
+    const { isValid, finalSkillName, finalCourseName, selectedSkill, selectedCourse } = 
+      validateAndResolveSkillAndCourse(topicForm.skillName, topicForm.courseName);
 
-    const selectedCourse = courses.find(c => {
-      if (!c) return false;
-      const cId = String(c.id || "").trim().toLowerCase();
-      const cTitle = String(c.title || "").trim().toLowerCase();
-      const cName = String(c.name || "").trim().toLowerCase();
-      const cCourseId = String((c as any).courseId || "").trim().toLowerCase();
-      const cCourseName = String((c as any).courseName || "").trim().toLowerCase();
+    if (!isValid) return;
 
-      return (
-        (dropdownCourseTerm && cId === dropdownCourseTerm) ||
-        (dropdownCourseTerm && cTitle === dropdownCourseTerm) ||
-        (dropdownCourseTerm && cName === dropdownCourseTerm) ||
-        (dropdownCourseTerm && cCourseId === dropdownCourseTerm) ||
-        (dropdownCourseTerm && cCourseName === dropdownCourseTerm) ||
-        (formCourseTerm && cId === formCourseTerm) ||
-        (formCourseTerm && cTitle === formCourseTerm) ||
-        (formCourseTerm && cName === formCourseTerm) ||
-        (formCourseTerm && cCourseId === formCourseTerm) ||
-        (formCourseTerm && cCourseName === formCourseTerm)
-      );
-    });
-
-    let resolvedCourseName = "";
-    if (selectedCourse) {
-      resolvedCourseName = 
-        selectedCourse.title || 
-        selectedCourse.name || 
-        (selectedCourse as any).courseName || 
-        (selectedCourse as any).courseId || 
-        selectedCourse.id || 
-        "";
-    }
-
-    const finalCourseName = resolvedCourseName || topicForm.courseName || workflowCourse;
-
-    // Resolve the skill from ALL possible sources
-    const skillSources = [
-      workflowSkill,
-      topicForm.skillName,
-      selectedCourse?.skillName,
-      (selectedCourse as any)?.skill,
-      (selectedCourse as any)?.skillId,
-      (selectedCourse as any)?.category,
-      (selectedCourse as any)?.parentSkill
-    ];
-
-    let resolvedSkillName = "";
-    
-    // Trim whitespace and compare case-insensitively against existing skills
-    for (const source of skillSources) {
-      if (!source) continue;
-      const cleanSource = String(source).trim();
-      if (!cleanSource) continue;
-      
-      const matchedSkill = skills.find(s => {
-        const sId = String(s.id || "").trim().toLowerCase();
-        const sTitle = String(s.title || "").trim().toLowerCase();
-        const srcLower = cleanSource.toLowerCase();
-        return sId === srcLower || sTitle === srcLower;
-      });
-
-      if (matchedSkill) {
-        resolvedSkillName = matchedSkill.title;
-        break;
-      }
-    }
-
-    // If no exact match in skills, use the first non-empty source
-    if (!resolvedSkillName) {
-      for (const source of skillSources) {
-        if (!source) continue;
-        const cleanSource = String(source).trim();
-        if (cleanSource) {
-          resolvedSkillName = cleanSource;
-          break;
-        }
-      }
-    }
-
-    const finalSkillName = resolvedSkillName;
-
+    // 9. Add console logs before saving:
     console.log({
       workflowSkill,
+      workflowCourse,
       topicForm,
+      selectedSkill,
       selectedCourse,
-      finalSkillName
+      finalSkillName,
+      finalCourseName
     });
-
-    if (!finalSkillName) {
-      alert("Please specify a Skill!");
-      return;
-    }
-
-    // Validation should only fail if NO course is actually selected
-    const isCourseSelected = !!(workflowCourse || topicForm.courseName || resolvedCourseName);
-    if (!isCourseSelected) {
-      alert("Please specify a Course Module!");
-      return;
-    }
 
     const topicData = {
       ...topicForm,
@@ -424,7 +446,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (workflowSkill) {
       const coursesInSkill = courses
-        .filter(c => c.skillName === workflowSkill)
+        .filter(c => skillMatches(c, workflowSkill))
         .map(c => c.title || c.name);
       if (coursesInSkill.length > 0) {
         setWorkflowCourse(coursesInSkill[0]);
@@ -437,7 +459,7 @@ export default function AdminDashboard() {
   // 3. Drive workflow topic selector based on skill + course
   useEffect(() => {
     if (workflowSkill && workflowCourse) {
-      const topicsInCourse = topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse);
+      const topicsInCourse = topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse));
       if (topicsInCourse.length > 0) {
         if (!isNewTopicMode) {
           // Keep selection if it exists, otherwise pick the first
@@ -755,8 +777,8 @@ export default function AdminDashboard() {
       t.courseName.toLowerCase().includes(query) ||
       (t.tags && t.tags.toLowerCase().includes(query));
 
-    const matchSkill = !selectedSkillFilter || t.skillName === selectedSkillFilter;
-    const matchCourse = !selectedCourseFilter || t.courseName === selectedCourseFilter;
+    const matchSkill = !selectedSkillFilter || skillMatches(t, selectedSkillFilter);
+    const matchCourse = !selectedCourseFilter || courseMatches(t, selectedCourseFilter);
     
     let matchStatus = true;
     if (selectedStatusFilter === "published") matchStatus = t.published !== false;
@@ -1091,7 +1113,7 @@ export default function AdminDashboard() {
                       className="w-full rounded-lg border border-neutral-800 bg-black/60 px-3 py-2.5 text-xs text-white focus:border-gold focus:outline-none cursor-pointer"
                     >
                       <option value="">-- Choose Course --</option>
-                      {courses.filter(c => c.skillName === workflowSkill).map((c, i) => (
+                      {courses.filter(c => skillMatches(c, workflowSkill)).map((c, i) => (
                         <option key={c.id} value={c.title || c.name}>{c.title || c.name}</option>
                       ))}
                     </select>
@@ -1108,10 +1130,10 @@ export default function AdminDashboard() {
                       onChange={(e) => setWorkflowTopicId(e.target.value)}
                       className="w-full rounded-lg border border-neutral-800 bg-black/60 px-3 py-2.5 text-xs text-white focus:border-gold focus:outline-none cursor-pointer disabled:opacity-40"
                     >
-                      {topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse).length === 0 ? (
+                      {topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse)).length === 0 ? (
                         <option value="">No topics in this selection</option>
                       ) : (
-                        topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse).map((t) => (
+                        topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse)).map((t) => (
                           <option key={t.id} value={t.id}>{t.title}</option>
                         ))
                       )}
@@ -1143,12 +1165,12 @@ export default function AdminDashboard() {
                   <h3 className="font-serif text-sm font-bold text-white border-b border-neutral-900 pb-2 flex items-center justify-between">
                     <span>Course Topics Inventory</span>
                     <span className="font-mono text-[10px] text-gold-light/60 bg-gold/10 px-1.5 py-0.5 rounded">
-                      {topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse).length} Topics
+                      {topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse)).length} Topics
                     </span>
                   </h3>
 
                   <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
-                    {topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse).map((t) => (
+                    {topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse)).map((t) => (
                       <div
                         key={t.id}
                         onClick={() => {
@@ -1199,7 +1221,7 @@ export default function AdminDashboard() {
                       </div>
                     ))}
 
-                    {topics.filter(t => t.skillName === workflowSkill && t.courseName === workflowCourse).length === 0 && (
+                    {topics.filter(t => skillMatches(t, workflowSkill) && courseMatches(t, workflowCourse)).length === 0 && (
                       <p className="text-[11px] text-neutral-500 italic text-center py-6">No topics in this module. Click Create New Topic above to start!</p>
                     )}
                   </div>
@@ -1529,7 +1551,7 @@ export default function AdminDashboard() {
                   className="rounded-lg border border-neutral-800 bg-black/60 px-3 py-2 text-xs text-neutral-300 focus:border-gold focus:outline-none cursor-pointer"
                 >
                   <option value="">All Courses</option>
-                  {courses.filter(c => !selectedSkillFilter || c.skillName === selectedSkillFilter).map(c => (
+                  {courses.filter(c => !selectedSkillFilter || skillMatches(c, selectedSkillFilter)).map(c => (
                     <option key={c.id} value={c.title || c.name}>{c.title || c.name}</option>
                   ))}
                 </select>
@@ -2252,7 +2274,7 @@ export default function AdminDashboard() {
                 }
 
                 const skillId = playlistSkill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-                const existingSkill = skills.find(s => s.id === skillId || s.title.toLowerCase() === playlistSkill.toLowerCase());
+                const existingSkill = skills.find(s => s.id === skillId || skillMatches(s, playlistSkill));
                 if (!existingSkill) {
                   const { setDoc, doc } = await import("firebase/firestore");
                   const { db } = await import("../lib/firebase");
