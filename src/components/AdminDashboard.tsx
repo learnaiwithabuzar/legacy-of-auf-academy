@@ -171,17 +171,48 @@ export default function AdminDashboard() {
   };
 
   // Save Topic (Add/Edit)
-  const handleSaveTopic = (e: React.FormEvent) => {
+  const handleSaveTopic = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topicForm.title || !topicForm.skillName || !topicForm.courseName) {
-      alert("Please fill out Topic Name, Skill Name, and Course Name!");
+    if (!topicForm.title) {
+      alert("Please specify a Topic Name!");
       return;
     }
 
+    // Resolve course and skill using both old and new schema
+    const selectedCourse = courses.find(c => 
+      (c.title && c.title === topicForm.courseName) || 
+      (c.name && c.name === topicForm.courseName)
+    );
+
+    const finalCourseName = selectedCourse 
+      ? (selectedCourse.title || selectedCourse.name) 
+      : topicForm.courseName;
+
+    const finalSkillName = selectedCourse 
+      ? selectedCourse.skillName 
+      : topicForm.skillName;
+
+    if (!finalSkillName) {
+      alert("Please specify a Skill Name!");
+      return;
+    }
+    if (!finalCourseName) {
+      alert("Please specify a Course Name!");
+      return;
+    }
+
+    const topicData = {
+      ...topicForm,
+      courseName: finalCourseName,
+      skillName: finalSkillName,
+      published: topicForm.published !== false,
+      featured: topicForm.featured === true,
+    };
+
     if (editingTopicId) {
-      updateTopic(editingTopicId, topicForm);
+      await updateTopic(editingTopicId, topicData);
     } else {
-      addTopic(topicForm);
+      await addTopic(topicData);
     }
 
     // Reset Form
@@ -257,22 +288,47 @@ export default function AdminDashboard() {
       alert("Please specify a Topic Name!");
       return;
     }
-    if (!topicForm.skillName) {
+
+    // Resolve selected course and skill supporting old/new schema and current workflow selection
+    const selectedCourse = courses.find(c => 
+      (c.title && c.title === workflowCourse) || 
+      (c.name && c.name === workflowCourse) ||
+      (c.title && c.title === topicForm.courseName) ||
+      (c.name && c.name === topicForm.courseName)
+    );
+
+    const finalCourseName = selectedCourse 
+      ? (selectedCourse.title || selectedCourse.name) 
+      : (topicForm.courseName || workflowCourse);
+
+    const finalSkillName = selectedCourse 
+      ? selectedCourse.skillName 
+      : (topicForm.skillName || workflowSkill);
+
+    if (!finalSkillName) {
       alert("Please specify a Skill!");
       return;
     }
-    if (!topicForm.courseName) {
+    if (!finalCourseName) {
       alert("Please specify a Course Module!");
       return;
     }
 
+    const topicData = {
+      ...topicForm,
+      courseName: finalCourseName,
+      skillName: finalSkillName,
+      published: topicForm.published !== false,
+      featured: topicForm.featured === true,
+    };
+
     if (isNewTopicMode) {
-      await addTopic(topicForm);
+      await addTopic(topicData);
       setIsNewTopicMode(false);
-      alert(`Success! "${topicForm.title}" has been created and saved to Firestore!`);
+      alert(`Success! "${topicData.title}" has been created and saved to Firestore!`);
     } else if (workflowTopicId) {
-      await updateTopic(workflowTopicId, topicForm);
-      alert(`Success! "${topicForm.title}" has been updated in Firestore instantly!`);
+      await updateTopic(workflowTopicId, topicData);
+      alert(`Success! "${topicData.title}" has been updated in Firestore instantly!`);
     } else {
       alert("No active topic selected to save. Please toggle 'Create New Topic' or select a topic.");
     }

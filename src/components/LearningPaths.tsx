@@ -34,11 +34,22 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
 
   // Filter lists dynamically
   const skillCourses = courses.filter(
-    (c) => c.skillName?.toLowerCase() === activeSkill?.title?.toLowerCase() && c.published !== false
+    (c) => 
+      activeSkill && 
+      (c.skillName === activeSkill.title || 
+       c.skillName?.toLowerCase() === activeSkill.title?.toLowerCase() ||
+       c.skillName?.toLowerCase() === activeSkill.id?.toLowerCase()) && 
+      c.published !== false
   );
   
   const courseTopics = topics.filter(
-    (t) => t.courseName?.toLowerCase() === activeCourse?.title?.toLowerCase() && t.published !== false
+    (t) => 
+      activeCourse && 
+      (t.courseName === activeCourse.title || 
+       t.courseName === activeCourse.name || 
+       t.courseName?.toLowerCase() === activeCourse.title?.toLowerCase() || 
+       t.courseName?.toLowerCase() === activeCourse.name?.toLowerCase()) &&
+      t.published !== false
   );
 
   return (
@@ -137,11 +148,19 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-fade-in">
             {skills.map((skill) => {
               const skillCoursesCount = courses.filter(
-                (c) => c.skillName?.toLowerCase() === skill.title?.toLowerCase() && c.published !== false
+                (c) => 
+                  (c.skillName === skill.title || 
+                   c.skillName?.toLowerCase() === skill.title?.toLowerCase() ||
+                   c.skillName?.toLowerCase() === skill.id?.toLowerCase()) && 
+                  c.published !== false
               ).length;
               
               const skillTopicsCount = topics.filter(
-                (t) => t.skillName?.toLowerCase() === skill.title?.toLowerCase() && t.published !== false
+                (t) => 
+                  (t.skillName === skill.title || 
+                   t.skillName?.toLowerCase() === skill.title?.toLowerCase() ||
+                   t.skillName?.toLowerCase() === skill.id?.toLowerCase()) && 
+                  t.published !== false
               ).length;
 
               return (
@@ -209,7 +228,12 @@ export default function LearningPaths({ onWatchVideo }: LearningPathsProps) {
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {skillCourses.map((course) => {
                   const courseLessons = topics.filter(
-                    (t) => t.courseName?.toLowerCase() === course.title?.toLowerCase() && t.published !== false
+                    (t) => 
+                      (t.courseName === course.title || 
+                       t.courseName === course.name || 
+                       t.courseName?.toLowerCase() === course.title?.toLowerCase() || 
+                       t.courseName?.toLowerCase() === course.name?.toLowerCase()) && 
+                      t.published !== false
                   );
                   const completedInCourse = courseLessons.filter((t) => isTopicCompleted(t.id)).length;
                   const progressPercent = courseLessons.length > 0 

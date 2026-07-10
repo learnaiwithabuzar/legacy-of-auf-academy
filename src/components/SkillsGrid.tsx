@@ -8,7 +8,7 @@ interface SkillsGridProps {
 }
 
 export default function SkillsGrid({ onWatchVideo }: SkillsGridProps) {
-  const { skills, isTopicCompleted, toggleTopicCompletion } = useCMS();
+  const { skills, topics, isTopicCompleted, toggleTopicCompletion } = useCMS();
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
 
   const toggleExpand = (skillId: string) => {
@@ -27,6 +27,48 @@ export default function SkillsGrid({ onWatchVideo }: SkillsGridProps) {
     }
     return <Icons.BookOpen className="h-6 w-6 stroke-[1.5]" />;
   };
+
+  // Merge separate topics into each skill based on matching skillName
+  const mergedSkills = skills.map((skill: Skill) => {
+    const skillTopics = (topics || []).filter((topic) => {
+      // Only hide a topic if published === false
+      if (topic.published === false) {
+        return false;
+      }
+
+      const skillTitleClean = (skill.title || "").trim().toLowerCase();
+      const skillIdClean = (skill.id || "").trim().toLowerCase();
+
+      const topicSkillName = (topic.skillName || "").trim().toLowerCase();
+      const topicSkill = ((topic as any).skill || "").trim().toLowerCase();
+      const topicSkillId = ((topic as any).skillId || "").trim().toLowerCase();
+      const topicCategory = ((topic as any).category || "").trim().toLowerCase();
+      const topicParentSkill = ((topic as any).parentSkill || "").trim().toLowerCase();
+
+      const matchByTitle = skillTitleClean !== "" && (
+        topicSkillName === skillTitleClean ||
+        topicSkill === skillTitleClean ||
+        topicCategory === skillTitleClean ||
+        topicParentSkill === skillTitleClean
+      );
+
+      const matchById = skillIdClean !== "" && (
+        topicSkillId === skillIdClean
+      );
+
+      return matchByTitle || matchById;
+    });
+
+    return {
+      ...skill,
+      topics: skillTopics,
+    };
+  });
+
+  // Console debugging
+  console.log("CMS Skills", skills);
+  console.log("CMS Topics", topics);
+  console.log("Merged Skills", mergedSkills);
 
   return (
     <section className="relative px-4 py-20 bg-black bg-islamic-pattern border-b border-gold/10">
@@ -50,7 +92,7 @@ export default function SkillsGrid({ onWatchVideo }: SkillsGridProps) {
 
         {/* Responsive Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {skills.map((skill: Skill) => {
+          {mergedSkills.map((skill) => {
             const isExpanded = expandedSkillId === skill.id;
             return (
               <div
@@ -94,59 +136,65 @@ export default function SkillsGrid({ onWatchVideo }: SkillsGridProps) {
                       <span>✦</span> Curriculum Outline
                     </h4>
                     <div className="space-y-2.5">
-                      {skill.topics.map((topic) => {
-                        const isCompleted = isTopicCompleted(topic.id);
-                        return (
-                          <div
-                            id={`topic-row-${topic.id}`}
-                            key={topic.id}
-                            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border p-3.5 transition-all duration-200 ${
-                              isCompleted
-                                ? "border-emerald-500/25 bg-emerald-950/20"
-                                : "border-gold/10 bg-neutral-950/80 hover:border-gold/30"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <button
-                                onClick={() => toggleTopicCompletion(topic.id)}
-                                className={`mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border transition-all duration-200 ${
-                                  isCompleted
-                                    ? "bg-gold border-gold text-black"
-                                    : "border-neutral-700 text-transparent hover:border-gold/60"
-                                }`}
-                                title={isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
-                              >
-                                <Icons.Check className="h-3 w-3 stroke-[3.5]" />
-                              </button>
-                              <div className="space-y-1">
-                                <span className="inline-flex items-center rounded bg-gold/10 px-1.5 py-0.5 text-[9px] font-mono uppercase text-gold">
-                                  {topic.difficulty}
+                      {skill.topics.length === 0 ? (
+                        <p className="font-sans text-xs text-neutral-400 py-2">
+                          No topics found for this skill.
+                        </p>
+                      ) : (
+                        skill.topics.map((topic) => {
+                          const isCompleted = isTopicCompleted(topic.id);
+                          return (
+                            <div
+                              id={`topic-row-${topic.id}`}
+                              key={topic.id}
+                              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border p-3.5 transition-all duration-200 ${
+                                isCompleted
+                                  ? "border-emerald-500/25 bg-emerald-950/20"
+                                  : "border-gold/10 bg-neutral-950/80 hover:border-gold/30"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <button
+                                  onClick={() => toggleTopicCompletion(topic.id)}
+                                  className={`mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border transition-all duration-200 ${
+                                    isCompleted
+                                      ? "bg-gold border-gold text-black"
+                                      : "border-neutral-700 text-transparent hover:border-gold/60"
+                                  }`}
+                                  title={isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
+                                >
+                                  <Icons.Check className="h-3 w-3 stroke-[3.5]" />
+                                </button>
+                                <div className="space-y-1">
+                                  <span className="inline-flex items-center rounded bg-gold/10 px-1.5 py-0.5 text-[9px] font-mono uppercase text-gold">
+                                    {topic.difficulty}
+                                  </span>
+                                  <h5 className={`font-sans text-xs font-semibold tracking-wide transition-colors ${
+                                    isCompleted ? "text-neutral-500 line-through decoration-gold/30" : "text-white"
+                                  }`}>
+                                    {topic.title}
+                                  </h5>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                <span className="font-mono text-[10px] text-neutral-400">
+                                  ⏱️ {topic.duration}
                                 </span>
-                                <h5 className={`font-sans text-xs font-semibold tracking-wide transition-colors ${
-                                  isCompleted ? "text-neutral-500 line-through decoration-gold/30" : "text-white"
-                                }`}>
-                                  {topic.title}
-                                </h5>
+                                
+                                <button
+                                  id={`watch-video-btn-${topic.id}`}
+                                  onClick={() => onWatchVideo(topic.videoUrl, topic.title, topic.id)}
+                                  className="inline-flex items-center gap-1.5 rounded bg-emerald-accent/20 border border-gold/20 px-2.5 py-1 text-xs font-medium text-gold-light transition-all duration-200 hover:bg-gold hover:text-black hover:border-gold"
+                                >
+                                  <Icons.Play className="h-3 w-3 fill-current" />
+                                  <span>Watch Video</span>
+                                </button>
                               </div>
                             </div>
-
-                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                              <span className="font-mono text-[10px] text-neutral-400">
-                                ⏱️ {topic.duration}
-                              </span>
-                              
-                              <button
-                                id={`watch-video-btn-${topic.id}`}
-                                onClick={() => onWatchVideo(topic.videoUrl, topic.title, topic.id)}
-                                className="inline-flex items-center gap-1.5 rounded bg-emerald-accent/20 border border-gold/20 px-2.5 py-1 text-xs font-medium text-gold-light transition-all duration-200 hover:bg-gold hover:text-black hover:border-gold"
-                              >
-                                <Icons.Play className="h-3 w-3 fill-current" />
-                                <span>Watch Video</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 )}
