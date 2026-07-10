@@ -328,9 +328,58 @@ export default function AdminDashboard() {
 
     const finalCourseName = resolvedCourseName || topicForm.courseName || workflowCourse;
 
-    const finalSkillName = selectedCourse 
-      ? (selectedCourse.skillName || (selectedCourse as any).skill || (selectedCourse as any).skillId || topicForm.skillName || workflowSkill)
-      : (topicForm.skillName || workflowSkill);
+    // Resolve the skill from ALL possible sources
+    const skillSources = [
+      workflowSkill,
+      topicForm.skillName,
+      selectedCourse?.skillName,
+      (selectedCourse as any)?.skill,
+      (selectedCourse as any)?.skillId,
+      (selectedCourse as any)?.category,
+      (selectedCourse as any)?.parentSkill
+    ];
+
+    let resolvedSkillName = "";
+    
+    // Trim whitespace and compare case-insensitively against existing skills
+    for (const source of skillSources) {
+      if (!source) continue;
+      const cleanSource = String(source).trim();
+      if (!cleanSource) continue;
+      
+      const matchedSkill = skills.find(s => {
+        const sId = String(s.id || "").trim().toLowerCase();
+        const sTitle = String(s.title || "").trim().toLowerCase();
+        const srcLower = cleanSource.toLowerCase();
+        return sId === srcLower || sTitle === srcLower;
+      });
+
+      if (matchedSkill) {
+        resolvedSkillName = matchedSkill.title;
+        break;
+      }
+    }
+
+    // If no exact match in skills, use the first non-empty source
+    if (!resolvedSkillName) {
+      for (const source of skillSources) {
+        if (!source) continue;
+        const cleanSource = String(source).trim();
+        if (cleanSource) {
+          resolvedSkillName = cleanSource;
+          break;
+        }
+      }
+    }
+
+    const finalSkillName = resolvedSkillName;
+
+    console.log({
+      workflowSkill,
+      topicForm,
+      selectedCourse,
+      finalSkillName
+    });
 
     if (!finalSkillName) {
       alert("Please specify a Skill!");
