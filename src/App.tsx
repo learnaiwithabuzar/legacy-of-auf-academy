@@ -18,8 +18,9 @@ import { useCMS } from "./store/cmsStore";
 import { Bell, X } from "lucide-react";
 
 export default function App() {
-  const { activePushToast, dismissPushToast } = useCMS();
+  const { activePushToast, dismissPushToast, firestoreError } = useCMS();
   const [currentTab, setCurrentTab] = useState<string>("home");
+  const [showRulesNotice, setShowRulesNotice] = useState<boolean>(true);
   
   const [videoModal, setVideoModal] = useState({
     isOpen: false,
@@ -46,6 +47,63 @@ export default function App() {
       
       {/* 1. Global Navigation Bar */}
       <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+
+      {/* Firebase Security Rules Troubleshooting Notice */}
+      {firestoreError && showRulesNotice && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3">
+              <button 
+                onClick={() => setShowRulesNotice(false)} 
+                className="text-neutral-400 hover:text-white transition p-1 hover:bg-neutral-800 rounded-md"
+                title="Dismiss warning"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
+                <Bell className="h-6 w-6 animate-pulse" />
+              </div>
+              
+              <div className="space-y-3 flex-1 pr-6">
+                <h4 className="font-serif text-base font-bold text-white tracking-wide uppercase text-amber-500">
+                   Firebase Database Setup Action Required
+                </h4>
+                <p className="text-sm text-neutral-300 leading-relaxed font-sans">
+                  The application is correctly connected to the target production Firebase project <code className="text-amber-400 font-mono text-xs">legacy-of-auf-academy</code>, but has encountered a <strong className="text-white">Firestore Security Rules permission failure</strong> while attempting to retrieve collections (<code className="text-neutral-400 font-mono text-xs">{firestoreError.path || "challenges"}</code>).
+                </p>
+                
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs font-bold text-neutral-200 uppercase tracking-wider font-sans">
+                    How to solve this in 30 seconds:
+                  </p>
+                  <ol className="list-decimal list-inside text-xs text-neutral-400 space-y-1 font-sans">
+                    <li>Open the <a href="https://console.firebase.google.com/project/legacy-of-auf-academy/firestore/rules" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline inline-flex items-center gap-0.5 font-bold">Firebase Console Rules Tab ↗</a> in your browser.</li>
+                    <li>Replace your current security rules with the following rules allowing read/write access:</li>
+                  </ol>
+                  
+                  <pre className="bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-[11px] font-mono text-amber-300 overflow-x-auto max-h-40 leading-normal select-all">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`}
+                  </pre>
+                  
+                  <p className="text-[11px] text-neutral-500 font-sans italic">
+                    Note: As this is a secure client-side simulation workspace, these rules are ideal for development, role simulations, and instant database hydration. Click inside the code block to select and copy.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Main content router/tabs with transition wrapper */}
       <main className="min-h-[calc(100vh-280px)]">

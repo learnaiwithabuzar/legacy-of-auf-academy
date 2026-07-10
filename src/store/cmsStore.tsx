@@ -72,8 +72,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Error: ', JSON.stringify(errInfo));
+  
+  // Dispatch a custom event to notify the UI about the permission or connection error
+  const event = new CustomEvent('firestore-error', { detail: errInfo });
+  window.dispatchEvent(event);
 }
 
 
@@ -241,18 +244,135 @@ interface CMSContextType {
   // Globalization & Language Selector
   currentLanguage: "English" | "Arabic" | "Urdu" | "Hindi";
   setLanguage: (lang: "English" | "Arabic" | "Urdu" | "Hindi") => void;
+
+  // Global Firestore Error Tracking
+  firestoreError: any | null;
 }
+
+export const defaultCoursesList: Course[] = [
+  // path-1
+  { id: "course-1", title: "AI & Automation Foundation", name: "AI & Automation Foundation", learningPathId: "path-1", skillName: "AI & Automation", description: "Learn the fundamentals of AI tools, automation setups, and ethical workflows.", published: true, featured: true, iconName: "Cpu", sortOrder: 1 },
+  { id: "course-2", title: "Crafting Persuasive, Honest Offers with Copywriting", name: "Crafting Persuasive, Honest Offers with Copywriting", learningPathId: "path-1", skillName: "Copywriting", description: "Write marketing copy that builds trust and delivers massive, honest value.", published: true, featured: true, iconName: "PenTool", sortOrder: 2 },
+  { id: "course-3", title: "Client Acquisition & Freelancing Systems", name: "Client Acquisition & Freelancing Systems", learningPathId: "path-1", skillName: "AI & Automation", description: "Build scalable acquisition funnels and manage high-paying clients cleanly.", published: true, featured: false, iconName: "Users", sortOrder: 3 },
+  { id: "course-4", title: "Riba-Free Growth & Financial Stability", name: "Riba-Free Growth & Financial Stability", learningPathId: "path-1", skillName: "AI & Automation", description: "Construct solid financial systems aligned with Islamic business ethics.", published: true, featured: false, iconName: "TrendingUp", sortOrder: 4 },
+
+  // path-2
+  { id: "course-5", title: "Prophetic Business Philosophy & Servant Leadership", name: "Prophetic Business Philosophy & Servant Leadership", learningPathId: "path-2", skillName: "Digital Marketing", description: "Master the mindset of ethical trading, prophetic commerce, and servant leadership.", published: true, featured: true, iconName: "Sparkles", sortOrder: 5 },
+  { id: "course-6", title: "Building the Brand Story & Ethical Scaling Ads", name: "Building the Brand Story & Ethical Scaling Ads", learningPathId: "path-2", skillName: "Digital Marketing", description: "Learn ethical advertising, narrative-driven scaling, and direct-response marketing.", published: true, featured: false, iconName: "Megaphone", sortOrder: 6 },
+  { id: "course-7", title: "Sovereign Supply Chains & E-commerce Architecture", name: "Sovereign Supply Chains & E-commerce Architecture", learningPathId: "path-2", skillName: "E-commerce", description: "Architect a direct-to-consumer online business from raw inventory to custom delivery.", published: true, featured: true, iconName: "ShoppingBag", sortOrder: 7 },
+  { id: "course-8", title: "High-Stakes Public Speaking & Investor Pitching", name: "High-Stakes Public Speaking & Investor Pitching", learningPathId: "path-2", skillName: "Digital Marketing", description: "Prepare, design, and deliver powerhouse ethical business presentations for capital partners.", published: true, featured: false, iconName: "Mic", sortOrder: 8 },
+
+  // path-3
+  { id: "course-9", title: "Foundations of Shariah-Compliant Investments", name: "Foundations of Shariah-Compliant Investments", learningPathId: "path-3", skillName: "E-commerce", description: "Identify, structure, and invest in ethical and halaal financial securities.", published: true, featured: true, iconName: "Percent", sortOrder: 9 },
+  { id: "course-10", title: "Zakat Optimization and Equity Structuring", name: "Zakat Optimization and Equity Structuring", learningPathId: "path-3", skillName: "E-commerce", description: "Optimize zakat compliance across complex business equities and legal structures.", published: true, featured: false, iconName: "Layers", sortOrder: 10 },
+  { id: "course-11", title: "Building Generational Waqf & Philanthropic Legacies", name: "Building Generational Waqf & Philanthropic Legacies", learningPathId: "path-3", skillName: "E-commerce", description: "Design a long-term waqf system to generate permanent social impact and secure your lineage.", published: true, featured: true, iconName: "Gift", sortOrder: 11 },
+];
+
+export const defaultTopicsList: Topic[] = SKILLS_DATA.flatMap((s) => {
+  let resolvedCourseName = "AI & Automation Foundation";
+  if (s.title === "AI & Automation") {
+    resolvedCourseName = "AI & Automation Foundation";
+  } else if (s.title === "Digital Marketing") {
+    resolvedCourseName = "Prophetic Business Philosophy & Servant Leadership";
+  } else if (s.title === "E-commerce") {
+    resolvedCourseName = "Sovereign Supply Chains & E-commerce Architecture";
+  } else if (s.title === "Copywriting") {
+    resolvedCourseName = "Crafting Persuasive, Honest Offers with Copywriting";
+  }
+
+  return s.topics.map((t) => ({
+    ...t,
+    skillName: s.title,
+    courseName: resolvedCourseName,
+    shortDescription: `${t.title} lesson overview covering business logic and execution plans.`,
+    thumbnailUrl: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600`,
+    youtubePlaylistLink: "",
+    certificateLink: `/certificates?course=${encodeURIComponent(resolvedCourseName)}`,
+    officialWebsiteLink: "https://legacyofauf.academy",
+    notesPdfLink: "https://legacyofauf.academy/notes/lesson-guide.pdf",
+    assignmentPdf: "https://legacyofauf.academy/notes/assignment.pdf",
+    projectFile: "https://legacyofauf.academy/notes/project.zip",
+    downloadLink: "https://legacyofauf.academy/notes/lesson-guide.pdf",
+    businessApplication: "Direct market scaling using risk-free, cashflow-positive techniques.",
+    incomeOpportunity: "Freelancing consulting fees averaging $1,200 - $3,500 per client.",
+    islamicInsights: "Honest customer interactions, full price disclosures, and zero interest financing.",
+    nextTopic: "Advanced Scaling and Automation Platforms",
+    prerequisites: "Basic internet browsing knowledge",
+    tags: `${s.title}, Ethical Business, Auf Academy`,
+    featured: true,
+    published: true,
+    videoUrl: ""
+  }));
+});
+
+export const defaultQuizzesList: LessonQuiz[] = [
+  {
+    topicId: "concept-ethics",
+    questions: [
+      {
+        id: "q1",
+        type: "mcq",
+        text: "What was Abdur Rahman ibn Awf's core pricing and sales strategy that led to immense blessings (Barakah)?",
+        options: [
+          "He sold low-quality goods at high markup with speculative future contracts.",
+          "He sold only for cash, never concealed any defects, and took minimal but high-volume profits.",
+          "He restricted supply to artificially trigger premium bidding wars."
+        ],
+        correctAnswer: "He sold only for cash, never concealed any defects, and took minimal but high-volume profits.",
+        explanation: "Abdur Rahman ibn Awf (RA) declared that he never sold on credit, never hid defects, and accepted even a small profit margin to maintain continuous cashflow and trust."
+      },
+      {
+        id: "q2",
+        type: "true-false",
+        text: "Writing down contracts in detail is a direct Quranic recommendation.",
+        correctAnswer: "True",
+        explanation: "Surah Al-Baqarah verse 282 is the longest verse in the Qur'an and explicitly mandates writing down debt and contract terms for transparency."
+      },
+      {
+        id: "q3",
+        type: "fill-blank",
+        text: "The Arabic term for trust or integrity in business dealings is called ____.",
+        correctAnswer: "Amanah",
+        explanation: "Amanah represents honesty and absolute trustworthiness in delivering customer rights and managing assets."
+      },
+      {
+        id: "q4",
+        type: "short-answer",
+        text: "What major business practice is strictly prohibited in Islamic finance as it relates to interest?",
+        correctAnswer: "Riba",
+        explanation: "Riba (usury/interest) is strictly prohibited as it is exploitative and creates unethical concentration of wealth."
+      }
+    ]
+  },
+  {
+    topicId: "micro-saas",
+    questions: [
+      {
+        id: "q5",
+        type: "mcq",
+        text: "Which of the following aligns with an ethical, bootstrapped micro-SaaS model?",
+        options: [
+          "Charging hidden subscription fees that are hard to cancel.",
+          "Offering clear, upfront value with transparent billing and a simple cancellation policy.",
+          "Using user data without consent to sell advertisements."
+        ],
+        correctAnswer: "Offering clear, upfront value with transparent billing and a simple cancellation policy.",
+        explanation: "A halal business requires absolute transparency in pricing, clear billing, and no deceptive user hooks (avoiding Gharar)."
+      }
+    ]
+  }
+];
 
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
 export function CMSProvider({ children }: { children: React.ReactNode }) {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [blogArticles, setBlogArticles] = useState<BlogArticle[]>([]);
-  const [challenges, setChallenges] = useState<BusinessChallenge[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [skills, setSkills] = useState<Skill[]>(SKILLS_DATA);
+  const [topics, setTopics] = useState<Topic[]>(defaultTopicsList);
+  const [learningPaths, setLearningPaths] = useState<LearningPath[]>(LEARNING_PATHS_DATA);
+  const [projects, setProjects] = useState<Project[]>(PROJECTS_DATA);
+  const [blogArticles, setBlogArticles] = useState<BlogArticle[]>(BLOG_DATA);
+  const [challenges, setChallenges] = useState<BusinessChallenge[]>(CHALLENGES_DATA);
+  const [courses, setCourses] = useState<Course[]>(defaultCoursesList);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return localStorage.getItem("loa_is_admin") === "true";
   });
@@ -265,7 +385,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [bookmarks, setBookmarks] = useState<StudentBookmark[]>([]);
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [submissions, setSubmissions] = useState<ProjectSubmission[]>([]);
-  const [quizzes, setQuizzes] = useState<LessonQuiz[]>([]);
+  const [quizzes, setQuizzes] = useState<LessonQuiz[]>(defaultQuizzesList);
   const [quizScores, setQuizScores] = useState<{ [topicId: string]: number }>({});
   const [simulatedRole, setSimulatedRole] = useState<"Super Admin" | "Teacher" | "Editor" | "Reviewer" | "Student">("Student");
   const [currentLanguage, setCurrentLanguageState] = useState<"English" | "Arabic" | "Urdu" | "Hindi">("English");
@@ -280,6 +400,16 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const [certificates, setCertificates] = useState<any[]>([]);
+  const [firestoreError, setFirestoreError] = useState<any | null>(null);
+
+  useEffect(() => {
+    const handleError = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setFirestoreError(detail);
+    };
+    window.addEventListener('firestore-error', handleError);
+    return () => window.removeEventListener('firestore-error', handleError);
+  }, []);
   
   const [sentEmails, setSentEmails] = useState<SimulatedEmail[]>([]);
   const [activePushToast, setActivePushToast] = useState<{ id: string; title: string; message: string; type: string; actionTab?: string } | null>(null);
@@ -419,6 +549,20 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         }
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}`);
+        const defaultProfile: StudentProfile = {
+          id: studentId,
+          name: auth.currentUser?.displayName || `Aspirant #${studentId.substring(0, 4)}`,
+          email: auth.currentUser?.email || "basitkkk79@gmail.com",
+          learningGoal: "Mastering Ethical Wealth & Entrepreneurship",
+          bio: "Excited to embark on my learning path with Legacy of Auf!",
+          role: "Student",
+          emailNotificationsEnabled: true,
+          pushNotificationsEnabled: true,
+          notifyOnNewVideos: true,
+          notifyOnCertificates: true,
+          notifyOnCourseUpdates: true
+        };
+        setStudentProfile(defaultProfile);
       });
 
       // 2. Progress listener
@@ -429,6 +573,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         setProgressList(list);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/progress`);
+        setProgressList([]);
       });
 
       // 3. Bookmarks listener
@@ -439,6 +584,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         setBookmarks(list);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/bookmarks`);
+        setBookmarks([]);
       });
 
       // 4. Notes listener
@@ -449,6 +595,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         setNotes(list);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/notes`);
+        setNotes([]);
       });
 
       // 5. Quiz Scores listener
@@ -464,6 +611,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         setQuizScores(scores);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/quizScores`);
+        setQuizScores({});
       });
 
       // 6. Notifications listener
@@ -484,6 +632,16 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         ]);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/notifications`);
+        setNotifications([
+          {
+            id: "notif-1",
+            title: "Welcome to Legacy of Auf Academy",
+            message: "Begin your sovereign, interest-free entrepreneurship path by selecting a skill path inside Learning Paths.",
+            type: "success",
+            timestamp: new Date().toISOString(),
+            read: false
+          }
+        ]);
       });
 
       // 7. Emails listener
@@ -495,6 +653,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         setSentEmails(list);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, `students/${studentId}/sent_emails`);
+        setSentEmails([]);
       });
 
       activeUnsubscribe = () => {
@@ -516,6 +675,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setSubmissions(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "submissions");
+      setSubmissions([]);
     });
 
     const quizzesCollRef = collection(db, "quizzes");
@@ -529,6 +689,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "quizzes");
+      setQuizzes([]);
     });
 
     const skillsCollRef = collection(db, "skills");
@@ -537,11 +698,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       snap.forEach((d) => list.push(d.data() as Skill));
       if (list.length > 0) {
         setSkills(list);
-      } else {
-        setSkills(SKILLS_DATA);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "skills");
+      setSkills([]);
     });
 
     const topicsCollRef = collection(db, "topics");
@@ -553,6 +713,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "topics");
+      setTopics([]);
     });
 
     const pathsCollRef = collection(db, "learningPaths");
@@ -561,11 +722,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       snap.forEach((d) => list.push(d.data() as LearningPath));
       if (list.length > 0) {
         setLearningPaths(list);
-      } else {
-        setLearningPaths(LEARNING_PATHS_DATA);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "learningPaths");
+      setLearningPaths([]);
     });
 
     const coursesCollRef = collection(db, "courses");
@@ -575,6 +735,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setCourses(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "courses");
+      setCourses([]);
     });
 
     // Global certificates listener
@@ -585,6 +746,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setCertificates(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "certificates");
+      setCertificates([]);
     });
 
     // Listen to Firebase Auth state
@@ -768,7 +930,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         await setDoc(doc(db, "quizzes", q.topicId), q);
       }
     } catch (e) {
-      console.error("Failed to seed quizzes to Firestore:", e);
+      console.warn("Failed to seed quizzes to Firestore:", e);
     }
   };
 
@@ -1247,7 +1409,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
         console.log("Database successfully seeded!");
       } catch (error) {
-        console.error("Failed to seed Firestore database:", error);
+        console.warn("Failed to seed Firestore database:", error);
       }
     };
 
@@ -1264,6 +1426,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setTopics(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "topics");
+      setTopics([]);
     });
 
     const unsubSkills = onSnapshot(collection(db, "skills"), (snap) => {
@@ -1274,6 +1437,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setSkills(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "skills");
+      setSkills([]);
     });
 
     const unsubPaths = onSnapshot(collection(db, "learningPaths"), (snap) => {
@@ -1284,6 +1448,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setLearningPaths(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "learningPaths");
+      setLearningPaths([]);
     });
 
     const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
@@ -1306,6 +1471,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setCourses(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "courses");
+      setCourses([]);
     });
 
     const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
@@ -1316,6 +1482,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setProjects(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "projects");
+      setProjects([]);
     });
 
     const unsubBlog = onSnapshot(collection(db, "blogArticles"), (snap) => {
@@ -1326,6 +1493,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setBlogArticles(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "blogArticles");
+      setBlogArticles([]);
     });
 
     const unsubChallenges = onSnapshot(collection(db, "challenges"), (snap) => {
@@ -1336,6 +1504,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setChallenges(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, "challenges");
+      setChallenges([]);
     });
 
     return () => {
@@ -1993,7 +2162,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         simulatedRole,
         setSimulatedRole,
         currentLanguage,
-        setLanguage
+        setLanguage,
+        firestoreError
       }}
     >
       {children}
