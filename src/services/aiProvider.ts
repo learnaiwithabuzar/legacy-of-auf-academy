@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 export interface MentorResponse {
   learningPath: Array<{
     step: number;
@@ -61,11 +59,9 @@ export interface BusinessEvaluationResponse {
   disclaimer?: string;
 }
 
-// Check for the API key inside development environment variables.
-// Vite will inject this during development if configured via defineConfig define or import.meta.env
+// Check for the API key inside development environment variables safely.
 const getApiKey = (): string => {
   try {
-    // Check process.env (injected during dev build)
     const envKey = (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) || "";
     if (envKey && !envKey.includes("MY_GEMINI_API_KEY")) {
       return envKey;
@@ -73,7 +69,6 @@ const getApiKey = (): string => {
   } catch (e) {}
 
   try {
-    // Fallback to import.meta.env
     const metaEnv = (import.meta as any).env;
     const metaKey = (metaEnv?.VITE_GEMINI_API_KEY as string) || (metaEnv?.GEMINI_API_KEY as string) || "";
     if (metaKey && !metaKey.includes("MY_GEMINI_API_KEY")) {
@@ -85,33 +80,55 @@ const getApiKey = (): string => {
 };
 
 const apiKey = getApiKey();
-const isDevelopment = !!(import.meta as any).env?.DEV;
 
-// Initialize Gemini safely only if we have an API key
-let aiClient: GoogleGenAI | null = null;
-if (apiKey) {
-  try {
-    aiClient = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-    console.log("Legacy of Auf AI Provider: Gemini Client initialized.");
-  } catch (e) {
-    console.error("Failed to initialize Gemini Client:", e);
+// Helper to call official Gemini REST API directly and securely from the browser
+async function fetchGemini(prompt: string, temperature = 0.7): Promise<string> {
+  const key = getApiKey();
+  if (!key) {
+    throw new Error("Gemini API key is not configured.");
   }
-} else {
-  console.log("Legacy of Auf AI Provider: Operating in static mode. Using robust mock fallback.");
+  // Use gemini-2.5-flash as the standard robust fast model for general text and JSON generation
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: temperature
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API HTTP Error ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("No text content returned from Gemini API response.");
+  }
+  return text;
 }
 
-// --- PROVIDER 1: REAL GEMINI PROVIDER (DEVELOPMENT ONLY) ---
+// --- PROVIDER 1: REAL GEMINI PROVIDER (DIRECT REST API FETCH) ---
 const geminiProvider = {
   async generateMentor(skill: string, level: string, goal: string): Promise<MentorResponse> {
-    if (!aiClient) throw new Error("Gemini client is not available.");
-
     const prompt = `You are the Legacy of Auf Academy AI Mentor, named after the legendary Sahabi Abdur Rahman ibn Awf (RA), known for his immense ethical wealth and business brilliance.
 Provide a comprehensive, high-fidelity Islamic career blueprint for a student with:
 - Current Skill: ${skill}
@@ -149,22 +166,11 @@ Important Instructions:
 2. Incorporate ethical Islamic entrepreneurship principles in every section.
 3. Be specific, actionable, and realistic.`;
 
-    const response = await aiClient.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      },
-    });
-
-    const text = response.text || "{}";
+    const text = await fetchGemini(prompt, 0.7);
     return JSON.parse(text.trim()) as MentorResponse;
   },
 
   async generatePlaylist(playlistUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
-    if (!aiClient) throw new Error("Gemini client is not available.");
-
     let parsedPlaylistId = "";
     try {
       if (playlistUrl.includes("list=")) {
@@ -201,22 +207,11 @@ Your response must be in structured JSON format matching this exact schema:
 Ensure you output EXACTLY 20 topics in the 'topics' array to fulfill the 'Auto Course Generator' feature.
 Ensure the output is valid, parsable JSON. Make the lesson topics sound highly educational, tactical, and incredibly high-value.`;
 
-    const response = await aiClient.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      },
-    });
-
-    const text = response.text || "{}";
+    const text = await fetchGemini(prompt, 0.7);
     return JSON.parse(text.trim()) as PlaylistResponse;
   },
 
   async generateCourseFromVideo(videoUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
-    if (!aiClient) throw new Error("Gemini client is not available.");
-
     let parsedVideoId = "";
     try {
       if (videoUrl.includes("v=")) {
@@ -255,22 +250,11 @@ Your response must be in structured JSON format matching this exact schema:
 Ensure you output EXACTLY 5 topics in the 'topics' array to fulfill the 'Auto Course Generator' feature.
 Ensure the output is valid, parsable JSON. Make the lesson topics sound highly educational, tactical, and incredibly high-value.`;
 
-    const response = await aiClient.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      },
-    });
-
-    const text = response.text || "{}";
+    const text = await fetchGemini(prompt, 0.7);
     return JSON.parse(text.trim()) as PlaylistResponse;
   },
 
   async evaluateBusiness(businessIdea: string): Promise<BusinessEvaluationResponse> {
-    if (!aiClient) throw new Error("Gemini client is not available.");
-
     const prompt = `You are the Legacy of Auf Academy Islamic Business Principles Advisor. Your role is to evaluate business ideas against Islamic commerce ethics (Fiqh al-Mu'amalat) and noble trade principles inspired by Abdur Rahman ibn Awf.
 Business Idea: "${businessIdea}"
 
@@ -291,16 +275,7 @@ Provide a detailed ethical and functional evaluation of this idea. Your response
 
 Ensure the output is valid, parsable JSON. Incorporate authentic Islamic finance principles with utmost seriousness and intellectual rigor.`;
 
-    const response = await aiClient.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.6,
-      },
-    });
-
-    const text = response.text || "{}";
+    const text = await fetchGemini(prompt, 0.6);
     const data = JSON.parse(text.trim()) as BusinessEvaluationResponse;
     data.disclaimer = "This tool provides educational guidance based on authentic Islamic business ethics. It does not issue religious rulings. Consult a qualified scholar for specific rulings.";
     return data;
@@ -492,12 +467,12 @@ const fallbackProvider = {
 // --- MULTI-PROVIDER AI SWITCHER ---
 export const aiProvider = {
   async generateMentor(skill: string, level: string, goal: string): Promise<MentorResponse> {
-    if (aiClient) {
+    if (apiKey) {
       try {
-        console.log("Legacy of Auf AI: Using Gemini Provider (generateMentor)");
+        console.log("Legacy of Auf AI: Using Gemini REST Provider (generateMentor)");
         return await geminiProvider.generateMentor(skill, level, goal);
       } catch (err) {
-        console.warn("Legacy of Auf AI: Gemini Provider failed, falling back to mock provider.", err);
+        console.warn("Legacy of Auf AI: Gemini REST Provider failed, falling back to mock provider.", err);
       }
     }
     console.log("Legacy of Auf AI: Using Mock/Fallback Provider (generateMentor)");
@@ -505,12 +480,12 @@ export const aiProvider = {
   },
 
   async generatePlaylist(playlistUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
-    if (aiClient) {
+    if (apiKey) {
       try {
-        console.log("Legacy of Auf AI: Using Gemini Provider (generatePlaylist)");
+        console.log("Legacy of Auf AI: Using Gemini REST Provider (generatePlaylist)");
         return await geminiProvider.generatePlaylist(playlistUrl, skillName, courseName);
       } catch (err) {
-        console.warn("Legacy of Auf AI: Gemini Provider failed, falling back to mock provider.", err);
+        console.warn("Legacy of Auf AI: Gemini REST Provider failed, falling back to mock provider.", err);
       }
     }
     console.log("Legacy of Auf AI: Using Mock/Fallback Provider (generatePlaylist)");
@@ -518,12 +493,12 @@ export const aiProvider = {
   },
 
   async generateCourseFromVideo(videoUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
-    if (aiClient) {
+    if (apiKey) {
       try {
-        console.log("Legacy of Auf AI: Using Gemini Provider (generateCourseFromVideo)");
+        console.log("Legacy of Auf AI: Using Gemini REST Provider (generateCourseFromVideo)");
         return await geminiProvider.generateCourseFromVideo(videoUrl, skillName, courseName);
       } catch (err) {
-        console.warn("Legacy of Auf AI: Gemini Provider failed, falling back to mock provider.", err);
+        console.warn("Legacy of Auf AI: Gemini REST Provider failed, falling back to mock provider.", err);
       }
     }
     console.log("Legacy of Auf AI: Using Mock/Fallback Provider (generateCourseFromVideo)");
@@ -531,12 +506,12 @@ export const aiProvider = {
   },
 
   async evaluateBusiness(businessIdea: string): Promise<BusinessEvaluationResponse> {
-    if (aiClient) {
+    if (apiKey) {
       try {
-        console.log("Legacy of Auf AI: Using Gemini Provider (evaluateBusiness)");
+        console.log("Legacy of Auf AI: Using Gemini REST Provider (evaluateBusiness)");
         return await geminiProvider.evaluateBusiness(businessIdea);
       } catch (err) {
-        console.warn("Legacy of Auf AI: Gemini Provider failed, falling back to mock provider.", err);
+        console.warn("Legacy of Auf AI: Gemini REST Provider failed, falling back to mock provider.", err);
       }
     }
     console.log("Legacy of Auf AI: Using Mock/Fallback Provider (evaluateBusiness)");
