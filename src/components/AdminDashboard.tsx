@@ -290,26 +290,56 @@ export default function AdminDashboard() {
     }
 
     // Resolve selected course and skill supporting old/new schema and current workflow selection
-    const selectedCourse = courses.find(c => 
-      (c.title && c.title === workflowCourse) || 
-      (c.name && c.name === workflowCourse) ||
-      (c.title && c.title === topicForm.courseName) ||
-      (c.name && c.name === topicForm.courseName)
-    );
+    const dropdownCourseTerm = (workflowCourse || "").trim().toLowerCase();
+    const formCourseTerm = (topicForm.courseName || "").trim().toLowerCase();
 
-    const finalCourseName = selectedCourse 
-      ? (selectedCourse.title || selectedCourse.name) 
-      : (topicForm.courseName || workflowCourse);
+    const selectedCourse = courses.find(c => {
+      if (!c) return false;
+      const cId = String(c.id || "").trim().toLowerCase();
+      const cTitle = String(c.title || "").trim().toLowerCase();
+      const cName = String(c.name || "").trim().toLowerCase();
+      const cCourseId = String((c as any).courseId || "").trim().toLowerCase();
+      const cCourseName = String((c as any).courseName || "").trim().toLowerCase();
+
+      return (
+        (dropdownCourseTerm && cId === dropdownCourseTerm) ||
+        (dropdownCourseTerm && cTitle === dropdownCourseTerm) ||
+        (dropdownCourseTerm && cName === dropdownCourseTerm) ||
+        (dropdownCourseTerm && cCourseId === dropdownCourseTerm) ||
+        (dropdownCourseTerm && cCourseName === dropdownCourseTerm) ||
+        (formCourseTerm && cId === formCourseTerm) ||
+        (formCourseTerm && cTitle === formCourseTerm) ||
+        (formCourseTerm && cName === formCourseTerm) ||
+        (formCourseTerm && cCourseId === formCourseTerm) ||
+        (formCourseTerm && cCourseName === formCourseTerm)
+      );
+    });
+
+    let resolvedCourseName = "";
+    if (selectedCourse) {
+      resolvedCourseName = 
+        selectedCourse.title || 
+        selectedCourse.name || 
+        (selectedCourse as any).courseName || 
+        (selectedCourse as any).courseId || 
+        selectedCourse.id || 
+        "";
+    }
+
+    const finalCourseName = resolvedCourseName || topicForm.courseName || workflowCourse;
 
     const finalSkillName = selectedCourse 
-      ? selectedCourse.skillName 
+      ? (selectedCourse.skillName || (selectedCourse as any).skill || (selectedCourse as any).skillId || topicForm.skillName || workflowSkill)
       : (topicForm.skillName || workflowSkill);
 
     if (!finalSkillName) {
       alert("Please specify a Skill!");
       return;
     }
-    if (!finalCourseName) {
+
+    // Validation should only fail if NO course is actually selected
+    const isCourseSelected = !!(workflowCourse || topicForm.courseName || resolvedCourseName);
+    if (!isCourseSelected) {
       alert("Please specify a Course Module!");
       return;
     }
