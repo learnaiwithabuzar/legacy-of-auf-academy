@@ -240,8 +240,16 @@ export default function AdminDashboard() {
   // Helper to validate and resolve skill and course
   const validateAndResolveSkillAndCourse = (isWorkflow: boolean) => {
     // Before validation, rebuild both values from the latest selected dropdowns or modal inputs.
-    const resolvedSkill = (isWorkflow ? workflowSkill : topicForm.skillName || "").trim();
-    const resolvedCourse = (isWorkflow ? workflowCourse : topicForm.courseName || "").trim();
+    let resolvedSkill = (isWorkflow ? workflowSkill : topicForm.skillName || "").trim();
+    let resolvedCourse = (isWorkflow ? workflowCourse : topicForm.courseName || "").trim();
+
+    // Cross-reference fallbacks to guarantee validation never blocks on valid selections
+    if (!resolvedSkill) {
+      resolvedSkill = (topicForm.skillName || workflowSkill || "").trim();
+    }
+    if (!resolvedCourse) {
+      resolvedCourse = (topicForm.courseName || workflowCourse || "").trim();
+    }
 
     if (!resolvedSkill) {
       alert("Please specify a Skill!");
@@ -391,21 +399,50 @@ export default function AdminDashboard() {
     const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
     setTopicForm(prev => ({ ...prev, thumbnailUrl: thumbnail }));
 
-    // Fetch original YouTube title via CORS-enabled noembed proxy
-    try {
-      setIsFetchingTitle(true);
-      const response = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.title) {
-          setFetchedTitle(data.title);
+    // Fetch original YouTube title via CORS-enabled noembed proxy with auto-retry and self-healing
+    let retries = 3;
+    let delay = 1000;
+    let success = false;
+    let fetchedTitleResult = "";
+
+    while (retries > 0 && !success) {
+      try {
+        setIsFetchingTitle(true);
+        const response = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.title) {
+            fetchedTitleResult = data.title;
+            success = true;
+          }
+        }
+      } catch (err) {
+        console.warn(`YouTube metadata fetch failed. Retries remaining: ${retries - 1}`, err);
+      }
+      if (!success) {
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 1.5;
         }
       }
-    } catch (err) {
-      console.error("Error calling oEmbed for YouTube title:", err);
-    } finally {
-      setIsFetchingTitle(false);
     }
+
+    if (success && fetchedTitleResult) {
+      setFetchedTitle(fetchedTitleResult);
+      // Auto-populate the Topic/Lesson title if it's currently empty, to assist the user
+      if (!topicForm.title) {
+        setTopicForm(prev => ({ ...prev, title: fetchedTitleResult }));
+      }
+    } else {
+      // Self-healing fallback if oEmbed completely fails
+      const fallbackTitle = `Lesson from YouTube Video (${videoId})`;
+      setFetchedTitle(fallbackTitle);
+      if (!topicForm.title) {
+        setTopicForm(prev => ({ ...prev, title: fallbackTitle }));
+      }
+    }
+    setIsFetchingTitle(false);
   };
 
   // Save workflow topic in the WordPress-style content editor page
@@ -2399,7 +2436,7 @@ export default function AdminDashboard() {
                           className="w-full rounded border border-neutral-800 bg-black/60 px-3.5 py-2.5 text-white focus:border-gold focus:outline-none"
                         />
                         <datalist id="existing-courses">
-                          {courses.map(c => <option key={c.id} value={c.name} />)}
+                          {courses.map(c => <option key={c.id} value={c.title || c.name} />)}
                         </datalist>
                         <span className="block text-[10px] text-neutral-500">Specify the course module name.</span>
                       </div>
@@ -2877,7 +2914,7 @@ export default function AdminDashboard() {
                     />
                     <datalist id="existing-courses">
                       {courses.map((c, i) => (
-                        <option key={c.id} value={c.name} />
+                        <option key={c.id} value={c.title || c.name} />
                       ))}
                     </datalist>
                   </div>

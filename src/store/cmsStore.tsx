@@ -1265,7 +1265,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       let changed = false;
       const mergedSkills = skills.map((s) => {
         const skillTopics = topics.filter(
-          (t) => t.skillName === s.title && t.published !== false
+          (t) => t.skillName?.trim().toLowerCase() === s.title?.trim().toLowerCase() && t.published !== false
         );
 
         const currentIds = (s.topics || []).map((t) => t.id).join(",");
