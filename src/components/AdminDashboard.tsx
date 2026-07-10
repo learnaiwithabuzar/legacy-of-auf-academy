@@ -2278,7 +2278,7 @@ export default function AdminDashboard() {
         {activeTab === "playlist-import" && (() => {
           const handleAutoGenerate = async () => {
             if (!playlistUrl) {
-              setPlaylistResult("Error: Please provide a YouTube playlist URL.");
+              setPlaylistResult("Error: Please provide a YouTube playlist or video URL.");
               return;
             }
             if (!playlistSkill) {
@@ -2294,18 +2294,20 @@ export default function AdminDashboard() {
             setPlaylistResult(null);
 
             try {
-              const data = await aiProvider.generatePlaylist(playlistUrl, playlistSkill, playlistCourse);
+              const isPlaylist = playlistUrl.includes("list=");
+              const data = isPlaylist 
+                ? await aiProvider.generatePlaylist(playlistUrl, playlistSkill, playlistCourse)
+                : await aiProvider.generateCourseFromVideo(playlistUrl, playlistSkill, playlistCourse);
+
               if (data && data.topics && Array.isArray(data.topics)) {
                 const savedList = [];
                 for (let idx = 0; idx < data.topics.length; idx++) {
                   const rawTopic = data.topics[idx];
-                  const topicId = `topic-playlist-${Date.now()}-${idx}`;
                   
                   const cleanTopic = {
-                    id: topicId,
                     title: rawTopic.title || `Lesson ${idx + 1}`,
                     duration: rawTopic.duration || "15 mins",
-                    videoUrl: rawTopic.videoUrl || "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    videoUrl: rawTopic.videoUrl || playlistUrl,
                     difficulty: (rawTopic.difficulty || "Beginner") as any,
                     skillName: playlistSkill,
                     courseName: playlistCourse,
@@ -2314,32 +2316,16 @@ export default function AdminDashboard() {
                     islamicInsights: rawTopic.islamicInsights || "Ethics of transparency as practiced by Abdur Rahman ibn Awf.",
                     businessApplication: rawTopic.businessApplication || "Formulate transparent client contracts.",
                     incomeOpportunity: rawTopic.incomeOpportunity || "Provide consulting for ethical brand frameworks.",
-                    tags: "YouTube Playlist, Auto Course, Ethical Enterprise",
+                    tags: isPlaylist ? "YouTube Playlist, Auto Course" : "YouTube Single, Auto Course",
                     featured: idx < 3,
                     published: true
                   };
 
-                  const { setDoc, doc } = await import("firebase/firestore");
-                  const { db } = await import("../lib/firebase");
-                  await setDoc(doc(db, "topics", topicId), cleanTopic);
+                  await addTopic(cleanTopic);
                   savedList.push(cleanTopic);
                 }
 
-                const skillId = playlistSkill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-                const existingSkill = skills.find(s => s.id === skillId || skillMatches(s, playlistSkill));
-                if (!existingSkill) {
-                  const { setDoc, doc } = await import("firebase/firestore");
-                  const { db } = await import("../lib/firebase");
-                  await setDoc(doc(db, "skills", skillId), {
-                    id: skillId,
-                    title: playlistSkill,
-                    description: `Automated course tracking for ${playlistSkill} path.`,
-                    iconName: "Film",
-                    topics: []
-                  });
-                }
-
-                setPlaylistResult(`Success! Created Course: "${playlistCourse}" inside Skill: "${playlistSkill}" with exactly ${savedList.length} video topics imported and synchronized to Firestore!`);
+                setPlaylistResult(`Success! Created Course: "${playlistCourse}" inside Skill: "${playlistSkill}" with exactly ${savedList.length} video topics imported and synchronized to Firestore via unified CMS engine!`);
                 setPlaylistUrl("");
                 
                 // Trigger global course announcement notification
@@ -2375,12 +2361,12 @@ export default function AdminDashboard() {
                 <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
                   <div className="lg:col-span-8 space-y-4">
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-mono uppercase tracking-widest text-gold">YouTube Playlist URL</label>
+                      <label className="block text-[10px] font-mono uppercase tracking-widest text-gold">YouTube Playlist or Single Video URL</label>
                       <input
                         type="text"
                         value={playlistUrl}
                         onChange={(e) => setPlaylistUrl(e.target.value)}
-                        placeholder="https://www.youtube.com/playlist?list=PL386B8C0DE0CD1F64"
+                        placeholder="Paste: https://youtu.be/ZmEqTgGrNHg  or playlist URL"
                         className="w-full rounded border border-neutral-800 bg-black/60 px-3.5 py-2.5 text-white focus:border-gold focus:outline-none"
                       />
                     </div>

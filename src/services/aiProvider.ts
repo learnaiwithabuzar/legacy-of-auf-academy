@@ -87,9 +87,9 @@ const getApiKey = (): string => {
 const apiKey = getApiKey();
 const isDevelopment = !!(import.meta as any).env?.DEV;
 
-// Initialize Gemini safely only if we have an API key and are in development
+// Initialize Gemini safely only if we have an API key
 let aiClient: GoogleGenAI | null = null;
-if (isDevelopment && apiKey) {
+if (apiKey) {
   try {
     aiClient = new GoogleGenAI({
       apiKey: apiKey,
@@ -99,12 +99,12 @@ if (isDevelopment && apiKey) {
         },
       },
     });
-    console.log("Legacy of Auf AI Provider: Gemini Client initialized in development.");
+    console.log("Legacy of Auf AI Provider: Gemini Client initialized.");
   } catch (e) {
     console.error("Failed to initialize Gemini Client:", e);
   }
 } else {
-  console.log("Legacy of Auf AI Provider: Operating in production static mode. Using robust mock fallback.");
+  console.log("Legacy of Auf AI Provider: Operating in static mode. Using robust mock fallback.");
 }
 
 // --- PROVIDER 1: REAL GEMINI PROVIDER (DEVELOPMENT ONLY) ---
@@ -199,6 +199,60 @@ Your response must be in structured JSON format matching this exact schema:
 }
 
 Ensure you output EXACTLY 20 topics in the 'topics' array to fulfill the 'Auto Course Generator' feature.
+Ensure the output is valid, parsable JSON. Make the lesson topics sound highly educational, tactical, and incredibly high-value.`;
+
+    const response = await aiClient.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
+      },
+    });
+
+    const text = response.text || "{}";
+    return JSON.parse(text.trim()) as PlaylistResponse;
+  },
+
+  async generateCourseFromVideo(videoUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
+    if (!aiClient) throw new Error("Gemini client is not available.");
+
+    let parsedVideoId = "";
+    try {
+      if (videoUrl.includes("v=")) {
+        parsedVideoId = videoUrl.split("v=")[1]?.split("&")[0] || "";
+      } else if (videoUrl.includes("youtu.be/")) {
+        parsedVideoId = videoUrl.split("youtu.be/")[1]?.split("&")[0] || "";
+      }
+    } catch (e) {}
+
+    const prompt = `You are an elite curriculum engineer at Legacy of Auf Academy.
+We need to generate a complete course curriculum of exactly 5 beautifully structured, high-ticket educational lessons/topics based on a single YouTube video.
+The YouTube video URL is: ${videoUrl}
+The Course belongs to:
+- Skill Path: ${skillName || "AI & Automation"}
+- Course Title: ${courseName || "ChatGPT Course Mastery"}
+
+Generate exactly 5 high-quality, professional educational video topics representing the sequential outline of this course. Ensure they form a smooth progression from beginner to advanced concepts, with each lesson focusing on a specific aspect of the video content.
+Your response must be in structured JSON format matching this exact schema:
+{
+  "courseTitle": "Polished, premium course name (e.g., ChatGPT Course Mastery or similar)",
+  "topics": [
+    {
+      "title": "Topic title (e.g., Lesson 1: Introduction to Prompt Engineering)",
+      "duration": "Duration (e.g., 12 mins)",
+      "videoUrl": "${videoUrl}",
+      "difficulty": "Beginner",
+      "shortDescription": "Fascinating description of what they learn",
+      "thumbnailUrl": "https://img.youtube.com/vi/${parsedVideoId || "ZmEqTgGrNHg"}/hqdefault.jpg",
+      "islamicInsights": "Relevant Quranic/Hadith guidance or Islamic ethical business rule for this lesson",
+      "businessApplication": "Practical business application of this concept",
+      "incomeOpportunity": "Tactical advice on how this skill translates to income generation"
+    }
+  ]
+}
+
+Ensure you output EXACTLY 5 topics in the 'topics' array to fulfill the 'Auto Course Generator' feature.
 Ensure the output is valid, parsable JSON. Make the lesson topics sound highly educational, tactical, and incredibly high-value.`;
 
     const response = await aiClient.models.generateContent({
@@ -346,6 +400,75 @@ const fallbackProvider = {
     };
   },
 
+  async generateCourseFromVideo(videoUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
+    const parsedVideoId = videoUrl.includes("youtu.be/") 
+      ? (videoUrl.split("youtu.be/")[1]?.split("?")[0] || "ZmEqTgGrNHg")
+      : (videoUrl.split("v=")[1]?.split("&")[0] || "ZmEqTgGrNHg");
+
+    const fallbackTopics = [
+      {
+        title: "Lesson 1: Introduction to ChatGPT & Generative AI",
+        duration: "12 mins",
+        videoUrl,
+        difficulty: "Beginner",
+        shortDescription: "Understanding the foundations of large language models and prompt engineering inside Legacy of Auf.",
+        thumbnailUrl: `https://img.youtube.com/vi/${parsedVideoId}/hqdefault.jpg`,
+        islamicInsights: "Use knowledge to benefit humanity, avoiding deceit or plagiarism.",
+        businessApplication: "Integrate AI to draft initial product copy and generate ideas.",
+        incomeOpportunity: "Provide rapid prototyping and copy generation services to small local businesses."
+      },
+      {
+        title: "Lesson 2: Advanced Prompting Techniques & Personas",
+        duration: "15 mins",
+        videoUrl,
+        difficulty: "Beginner",
+        shortDescription: "Master role-prompting, few-shot conditioning, and custom instructions for high-fidelity responses.",
+        thumbnailUrl: `https://img.youtube.com/vi/${parsedVideoId}/hqdefault.jpg`,
+        islamicInsights: "Allah loves when you perform any task with precision and excellence (Ihsan).",
+        businessApplication: "Create customized brand voice bots for automatic customer communication.",
+        incomeOpportunity: "Charge retainers for creating specialized prompt libraries for marketing departments."
+      },
+      {
+        title: "Lesson 3: Automating Business Workflows with Custom GPTs",
+        duration: "18 mins",
+        videoUrl,
+        difficulty: "Intermediate",
+        shortDescription: "How to configure custom GPT assistants with specialized knowledge and direct API actions.",
+        thumbnailUrl: `https://img.youtube.com/vi/${parsedVideoId}/hqdefault.jpg`,
+        islamicInsights: "Fulfill your trusts (Amanah) and ensure automated systems never compromise user privacy.",
+        businessApplication: "Establish an internal AI expert that drafts compliant contracts and answers policy queries.",
+        incomeOpportunity: "Develop and license customized GPT solutions for niche industries."
+      },
+      {
+        title: "Lesson 4: Islamic Ethical Guardrails for AI Generation",
+        duration: "14 mins",
+        videoUrl,
+        difficulty: "Intermediate",
+        shortDescription: "A deep dive into copyright, fact-checking, and ensuring truthfulness in all AI-generated copy.",
+        thumbnailUrl: `https://img.youtube.com/vi/${parsedVideoId}/hqdefault.jpg`,
+        islamicInsights: "O you who believe, be upright maintainers of justice, and witnesses to truth.",
+        businessApplication: "Establish strict editorial verification loops before publishing any AI-generated copy.",
+        incomeOpportunity: "Offer AI Auditing & Fact-checking consulting to high-integrity enterprise brands."
+      },
+      {
+        title: "Lesson 5: Scaling Your Sovereign AI Services Agency",
+        duration: "22 mins",
+        videoUrl,
+        difficulty: "Advanced",
+        shortDescription: "Building a high-margin services agency that employs ethical profit sharing and fair billing.",
+        thumbnailUrl: `https://img.youtube.com/vi/${parsedVideoId}/hqdefault.jpg`,
+        islamicInsights: "Fulfill your covenants, pay employees before their sweat dries, and share profits.",
+        businessApplication: "Create service subscription models (Ijarah) for ongoing content maintenance.",
+        incomeOpportunity: "Scale your agency to $5k+/month delivering localized bespoke AI integrations."
+      }
+    ];
+
+    return {
+      courseTitle: courseName || "ChatGPT Course Mastery",
+      topics: fallbackTopics
+    };
+  },
+
   async evaluateBusiness(businessIdea: string): Promise<BusinessEvaluationResponse> {
     return {
       businessIdea: businessIdea,
@@ -369,7 +492,7 @@ const fallbackProvider = {
 // --- MULTI-PROVIDER AI SWITCHER ---
 export const aiProvider = {
   async generateMentor(skill: string, level: string, goal: string): Promise<MentorResponse> {
-    if (isDevelopment && aiClient) {
+    if (aiClient) {
       try {
         console.log("Legacy of Auf AI: Using Gemini Provider (generateMentor)");
         return await geminiProvider.generateMentor(skill, level, goal);
@@ -382,7 +505,7 @@ export const aiProvider = {
   },
 
   async generatePlaylist(playlistUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
-    if (isDevelopment && aiClient) {
+    if (aiClient) {
       try {
         console.log("Legacy of Auf AI: Using Gemini Provider (generatePlaylist)");
         return await geminiProvider.generatePlaylist(playlistUrl, skillName, courseName);
@@ -394,8 +517,21 @@ export const aiProvider = {
     return await fallbackProvider.generatePlaylist(playlistUrl, skillName, courseName);
   },
 
+  async generateCourseFromVideo(videoUrl: string, skillName: string, courseName: string): Promise<PlaylistResponse> {
+    if (aiClient) {
+      try {
+        console.log("Legacy of Auf AI: Using Gemini Provider (generateCourseFromVideo)");
+        return await geminiProvider.generateCourseFromVideo(videoUrl, skillName, courseName);
+      } catch (err) {
+        console.warn("Legacy of Auf AI: Gemini Provider failed, falling back to mock provider.", err);
+      }
+    }
+    console.log("Legacy of Auf AI: Using Mock/Fallback Provider (generateCourseFromVideo)");
+    return await fallbackProvider.generateCourseFromVideo(videoUrl, skillName, courseName);
+  },
+
   async evaluateBusiness(businessIdea: string): Promise<BusinessEvaluationResponse> {
-    if (isDevelopment && aiClient) {
+    if (aiClient) {
       try {
         console.log("Legacy of Auf AI: Using Gemini Provider (evaluateBusiness)");
         return await geminiProvider.evaluateBusiness(businessIdea);

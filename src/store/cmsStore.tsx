@@ -1356,6 +1356,23 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     sortOrder?: number
   ) => {
     try {
+      // Auto-create skill if it doesn't exist
+      if (skillName) {
+        const skillId = skillName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const skillExists = skills.some(s => s.id === skillId || s.title?.toLowerCase() === skillName.toLowerCase());
+        if (!skillExists) {
+          const fullSkill = {
+            id: skillId,
+            title: skillName,
+            description: `Learning path for mastering ${skillName}.`,
+            iconName: "Cpu",
+            topics: []
+          };
+          await setDoc(doc(db, "skills", skillId), fullSkill);
+          console.log(`[AUTO-CREATE] Skill '${skillName}' created automatically.`);
+        }
+      }
+
       const id = `course-${Date.now()}`;
       let resolvedPathId = learningPathId || "path-1";
       if (!learningPathId && skillName) {
@@ -1433,20 +1450,38 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   // --- TOPICS CRUD ---
   const addTopic = async (newTopic: Omit<Topic, "id">) => {
     try {
-      const id = `topic-${Date.now()}`;
-      const fullTopic: Topic = {
-        ...newTopic,
-        id
-      };
-      await setDoc(doc(db, "topics", id), fullTopic);
+      // Auto-create skill if it doesn't exist
+      if (newTopic.skillName) {
+        const skillId = newTopic.skillName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const skillExists = skills.some(s => s.id === skillId || s.title?.toLowerCase() === newTopic.skillName.toLowerCase());
+        if (!skillExists) {
+          const fullSkill = {
+            id: skillId,
+            title: newTopic.skillName,
+            description: `Learning path for mastering ${newTopic.skillName}.`,
+            iconName: "Cpu",
+            topics: []
+          };
+          await setDoc(doc(db, "skills", skillId), fullSkill);
+          console.log(`[AUTO-CREATE-TOPIC] Skill '${newTopic.skillName}' created automatically.`);
+        }
+      }
 
       // Auto-create course module if it doesn't exist
       if (newTopic.courseName) {
         const courseExists = courses.some(c => c.name === newTopic.courseName || c.title === newTopic.courseName);
         if (!courseExists) {
           await addCourse(newTopic.courseName, undefined, newTopic.skillName);
+          console.log(`[AUTO-CREATE-TOPIC] Course '${newTopic.courseName}' created automatically.`);
         }
       }
+
+      const id = `topic-${Date.now()}`;
+      const fullTopic: Topic = {
+        ...newTopic,
+        id
+      };
+      await setDoc(doc(db, "topics", id), fullTopic);
 
       await addNotification(
         "New Video Lesson Published",
@@ -1460,15 +1495,33 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
   const updateTopic = async (topicId: string, updatedFields: Partial<Topic>) => {
     try {
-      await updateDoc(doc(db, "topics", topicId), updatedFields);
+      // Auto-create skill if it doesn't exist
+      if (updatedFields.skillName) {
+        const skillId = updatedFields.skillName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const skillExists = skills.some(s => s.id === skillId || s.title?.toLowerCase() === updatedFields.skillName.toLowerCase());
+        if (!skillExists) {
+          const fullSkill = {
+            id: skillId,
+            title: updatedFields.skillName,
+            description: `Learning path for mastering ${updatedFields.skillName}.`,
+            iconName: "Cpu",
+            topics: []
+          };
+          await setDoc(doc(db, "skills", skillId), fullSkill);
+          console.log(`[AUTO-CREATE-UPDATE] Skill '${updatedFields.skillName}' created automatically.`);
+        }
+      }
 
       // Auto-create course module if it doesn't exist
       if (updatedFields.courseName) {
         const courseExists = courses.some(c => c.name === updatedFields.courseName || c.title === updatedFields.courseName);
         if (!courseExists) {
           await addCourse(updatedFields.courseName, undefined, updatedFields.skillName || "AI & Automation");
+          console.log(`[AUTO-CREATE-UPDATE] Course '${updatedFields.courseName}' created automatically.`);
         }
       }
+
+      await updateDoc(doc(db, "topics", topicId), updatedFields);
     } catch (e) {
       console.error("Error updating topic:", e);
     }
