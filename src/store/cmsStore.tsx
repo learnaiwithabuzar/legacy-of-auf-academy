@@ -29,6 +29,54 @@ import {
 } from "firebase/auth";
 import { db, auth } from "../lib/firebase";
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+
 // Extracted Helper for CSV Parsing (RFC 4180 Compliant)
 export function parseCSV(text: string): string[][] {
   const lines: string[][] = [];
@@ -369,6 +417,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
           await setDoc(studentDocRef, defaultProfile);
           setStudentProfile(defaultProfile);
         }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}`);
       });
 
       // 2. Progress listener
@@ -377,6 +427,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         const list: TopicProgress[] = [];
         snap.forEach((d) => list.push(d.data() as TopicProgress));
         setProgressList(list);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/progress`);
       });
 
       // 3. Bookmarks listener
@@ -385,6 +437,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         const list: StudentBookmark[] = [];
         snap.forEach((d) => list.push(d.data() as StudentBookmark));
         setBookmarks(list);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/bookmarks`);
       });
 
       // 4. Notes listener
@@ -393,6 +447,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         const list: StudentNote[] = [];
         snap.forEach((d) => list.push(d.data() as StudentNote));
         setNotes(list);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/notes`);
       });
 
       // 5. Quiz Scores listener
@@ -406,6 +462,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
           }
         });
         setQuizScores(scores);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/quizScores`);
       });
 
       // 6. Notifications listener
@@ -424,6 +482,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             read: false
           }
         ]);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/notifications`);
       });
 
       // 7. Emails listener
@@ -433,6 +493,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         snap.forEach((d) => list.push(d.data() as SimulatedEmail));
         list.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
         setSentEmails(list);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `students/${studentId}/sent_emails`);
       });
 
       activeUnsubscribe = () => {
@@ -452,6 +514,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       const list: ProjectSubmission[] = [];
       snap.forEach((d) => list.push(d.data() as ProjectSubmission));
       setSubmissions(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "submissions");
     });
 
     const quizzesCollRef = collection(db, "quizzes");
@@ -463,6 +527,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       } else {
         seedDefaultQuizzes();
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "quizzes");
     });
 
     const skillsCollRef = collection(db, "skills");
@@ -474,6 +540,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       } else {
         setSkills(SKILLS_DATA);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "skills");
     });
 
     const topicsCollRef = collection(db, "topics");
@@ -483,6 +551,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       if (list.length > 0) {
         setTopics(list);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "topics");
     });
 
     const pathsCollRef = collection(db, "learningPaths");
@@ -494,6 +564,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLearningPaths(LEARNING_PATHS_DATA);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "learningPaths");
     });
 
     const coursesCollRef = collection(db, "courses");
@@ -501,6 +573,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       const list: Course[] = [];
       snap.forEach((d) => list.push(d.data() as Course));
       setCourses(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "courses");
     });
 
     // Global certificates listener
@@ -509,6 +583,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       const list: any[] = [];
       snap.forEach((d) => list.push(d.data()));
       setCertificates(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "certificates");
     });
 
     // Listen to Firebase Auth state
@@ -1186,6 +1262,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as Topic);
       });
       setTopics(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "topics");
     });
 
     const unsubSkills = onSnapshot(collection(db, "skills"), (snap) => {
@@ -1194,6 +1272,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push({ ...(docSnap.data() as Skill), topics: [] });
       });
       setSkills(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "skills");
     });
 
     const unsubPaths = onSnapshot(collection(db, "learningPaths"), (snap) => {
@@ -1202,6 +1282,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as LearningPath);
       });
       setLearningPaths(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "learningPaths");
     });
 
     const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
@@ -1222,6 +1304,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         } as Course);
       });
       setCourses(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "courses");
     });
 
     const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
@@ -1230,6 +1314,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as Project);
       });
       setProjects(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "projects");
     });
 
     const unsubBlog = onSnapshot(collection(db, "blogArticles"), (snap) => {
@@ -1238,6 +1324,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as BlogArticle);
       });
       setBlogArticles(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "blogArticles");
     });
 
     const unsubChallenges = onSnapshot(collection(db, "challenges"), (snap) => {
@@ -1246,6 +1334,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         list.push(docSnap.data() as BusinessChallenge);
       });
       setChallenges(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "challenges");
     });
 
     return () => {

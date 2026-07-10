@@ -1,70 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Check if user has specific roles
-    function isSuperAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.role == 'Super Admin' || request.auth.token.email == 'basitkkk79@gmail.com');
-    }
-
-    function isTeacher() {
-      return isAuthenticated() && 
-        (request.auth.token.role == 'Teacher' || request.auth.token.role == 'Super Admin');
-    }
-
-    // General collection rules
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
-    }
-
-    match /topics/{topicId} {
-      allow read: if true;
-      allow write: if isTeacher();
-    }
-
-    match /skills/{skillId} {
-      allow read: if true;
-      allow write: if isTeacher();
-    }
-
-    match /learningPaths/{pathId} {
-      allow read: if true;
-      allow write: if isTeacher();
-    }
-
-    match /courses/{courseId} {
-      allow read: if true;
-      allow write: if isTeacher();
-    }
-
-    match /certificates/{certId} {
-      allow read: if true; // Publicly verifiable
-      allow write: if isAuthenticated(); // Claims can be submitted, approved by admins
-    }
-
-    match /project_submissions/{subId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isSuperAdmin());
-    }
-
-    match /student_notes/{noteId} {
-      allow read: if isAuthenticated() && request.auth.uid == resource.data.studentId;
-      allow write: if isAuthenticated() && request.auth.uid == request.resource.data.studentId;
-    }
-
-    match /logs/{logId} {
-      allow read, write: if isSuperAdmin();
-    }
-
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if true;
     }
   }
 }

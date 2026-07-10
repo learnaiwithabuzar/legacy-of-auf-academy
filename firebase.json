@@ -13,7 +13,14 @@
       }
     ]
   },
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "ai-studio-legacyofaufacade-cb4d2ba2-a943-40ca-b7be-eda6ee37a905",
+      "rules": "firestore.rules"
+    }
+  ]
 }
