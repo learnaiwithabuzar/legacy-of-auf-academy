@@ -14,70 +14,66 @@ function normalize(value: any): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
-function skillMatches(item: any, selectedSkill: any): boolean {
-  if (!item || !selectedSkill) return false;
+function getSkillIdentifiers(val: any): string[] {
+  if (!val) return [];
+  if (typeof val !== "object") {
+    return [normalize(val)];
+  }
+  const fields: string[] = [];
   
-  const itemFields = [
-    item.skillName,
-    item.skill,
-    item.skillId,
-    item.category,
-    item.parentSkill,
-    item.title,
-    item.id
-  ].map(normalize).filter(Boolean);
-
-  if (itemFields.length === 0) return false;
-
-  const targetFields = typeof selectedSkill === "object" 
-    ? [
-        selectedSkill.skillName,
-        selectedSkill.skill,
-        selectedSkill.skillId,
-        selectedSkill.category,
-        selectedSkill.parentSkill,
-        selectedSkill.title,
-        selectedSkill.id
-      ].map(normalize).filter(Boolean)
-    : [normalize(selectedSkill)].filter(Boolean);
-
-  if (targetFields.length === 0) return false;
-
-  return itemFields.some(itemVal => 
-    targetFields.some(targetVal => itemVal === targetVal)
-  );
+  // If the object represents a Skill directly, its primary identifier is its own title or id.
+  if (!('skillName' in val) && !('courseName' in val) && !('courseId' in val)) {
+    fields.push(val.title);
+    fields.push(val.name);
+    fields.push(val.id);
+  }
+  
+  // Also push potential skill properties if it's a child object (Course/Topic)
+  fields.push(val.skillName);
+  fields.push(val.skill);
+  fields.push(val.skillId);
+  fields.push(val.category);
+  fields.push(val.parentSkill);
+  
+  return fields.map(normalize).filter(Boolean);
 }
 
-function courseMatches(item: any, selectedCourse: any): boolean {
-  if (!item || !selectedCourse) return false;
+function skillMatches(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const aFields = getSkillIdentifiers(a);
+  const bFields = getSkillIdentifiers(b);
+  if (aFields.length === 0 || bFields.length === 0) return false;
+  return aFields.some(aVal => bFields.some(bVal => aVal === bVal));
+}
 
-  const itemFields = [
-    item.courseName,
-    item.course,
-    item.courseId,
-    item.title,
-    item.name,
-    item.id
-  ].map(normalize).filter(Boolean);
+function getCourseIdentifiers(val: any): string[] {
+  if (!val) return [];
+  if (typeof val !== "object") {
+    return [normalize(val)];
+  }
+  const fields: string[] = [];
+  
+  // If the object represents a Course directly, its identity is its own title, name, or id.
+  if (!('videoUrl' in val) && !('difficulty' in val)) {
+    fields.push(val.title);
+    fields.push(val.name);
+    fields.push(val.id);
+  }
+  
+  // Child/related course fields
+  fields.push(val.courseName);
+  fields.push(val.course);
+  fields.push(val.courseId);
+  
+  return fields.map(normalize).filter(Boolean);
+}
 
-  if (itemFields.length === 0) return false;
-
-  const targetFields = typeof selectedCourse === "object" 
-    ? [
-        selectedCourse.courseName,
-        selectedCourse.course,
-        selectedCourse.courseId,
-        selectedCourse.title,
-        selectedCourse.name,
-        selectedCourse.id
-      ].map(normalize).filter(Boolean)
-    : [normalize(selectedCourse)].filter(Boolean);
-
-  if (targetFields.length === 0) return false;
-
-  return itemFields.some(itemVal => 
-    targetFields.some(targetVal => itemVal === targetVal)
-  );
+function courseMatches(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const aFields = getCourseIdentifiers(a);
+  const bFields = getCourseIdentifiers(b);
+  if (aFields.length === 0 || bFields.length === 0) return false;
+  return aFields.some(aVal => bFields.some(bVal => aVal === bVal));
 }
 
 export default function AdminDashboard() {
@@ -242,10 +238,10 @@ export default function AdminDashboard() {
   };
 
   // Helper to validate and resolve skill and course
-  const validateAndResolveSkillAndCourse = (formSkillName: string, formCourseName: string) => {
-    // Before validation, rebuild both values from the selected dropdowns/inputs to avoid stale state.
-    const resolvedSkill = (formSkillName || workflowSkill || "").trim();
-    const resolvedCourse = (formCourseName || workflowCourse || "").trim();
+  const validateAndResolveSkillAndCourse = (isWorkflow: boolean) => {
+    // Before validation, rebuild both values from the latest selected dropdowns or modal inputs.
+    const resolvedSkill = (isWorkflow ? workflowSkill : topicForm.skillName || "").trim();
+    const resolvedCourse = (isWorkflow ? workflowCourse : topicForm.courseName || "").trim();
 
     if (!resolvedSkill) {
       alert("Please specify a Skill!");
@@ -265,6 +261,16 @@ export default function AdminDashboard() {
       ? (selectedCourse.title || selectedCourse.name || (selectedCourse as any).courseName || (selectedCourse as any).courseId || selectedCourse.id || resolvedCourse) 
       : resolvedCourse;
 
+    console.log("[DEBUG 8-11. RESOLVE SKILL & COURSE]", {
+      isWorkflow,
+      resolvedSkill,
+      resolvedCourse,
+      "8. selectedSkill": selectedSkill,
+      "9. selectedCourse": selectedCourse,
+      "10. finalSkillName": finalSkillName,
+      "11. finalCourseName": finalCourseName
+    });
+
     return {
       isValid: true,
       finalSkillName,
@@ -273,6 +279,19 @@ export default function AdminDashboard() {
       selectedCourse
     };
   };
+
+  // State Tracking logs on every change
+  useEffect(() => {
+    console.log("[DEBUG CMS DATA FLOW STATE CHANGE]", {
+      "1. skills": skills,
+      "2. courses": courses,
+      "3. topics": topics,
+      "4. workflowSkill": workflowSkill,
+      "5. workflowCourse": workflowCourse,
+      "6. workflowTopicId": workflowTopicId,
+      "7. topicForm": topicForm
+    });
+  }, [skills, courses, topics, workflowSkill, workflowCourse, workflowTopicId, topicForm]);
 
   // State synchronization effects to automatically update topicForm
   useEffect(() => {
@@ -296,20 +315,9 @@ export default function AdminDashboard() {
     }
 
     const { isValid, finalSkillName, finalCourseName, selectedSkill, selectedCourse } = 
-      validateAndResolveSkillAndCourse(topicForm.skillName, topicForm.courseName);
+      validateAndResolveSkillAndCourse(false); // Modal context
 
     if (!isValid) return;
-
-    // 9. Add console logs before saving:
-    console.log({
-      workflowSkill,
-      workflowCourse,
-      topicForm,
-      selectedSkill,
-      selectedCourse,
-      finalSkillName,
-      finalCourseName
-    });
 
     const topicData = {
       ...topicForm,
@@ -319,11 +327,20 @@ export default function AdminDashboard() {
       featured: topicForm.featured === true,
     };
 
+    console.log("[DEBUG 12. BEFORE FIRESTORE SAVE - Topic Modal]", {
+      editingTopicId,
+      documentToWrite: topicData
+    });
+
     if (editingTopicId) {
       await updateTopic(editingTopicId, topicData);
     } else {
       await addTopic(topicData);
     }
+
+    console.log("[DEBUG 13. AFTER FIRESTORE SAVE - Topic Modal]", {
+      savedDocument: topicData
+    });
 
     // Reset Form
     setIsTopicModalOpen(false);
@@ -400,20 +417,9 @@ export default function AdminDashboard() {
     }
 
     const { isValid, finalSkillName, finalCourseName, selectedSkill, selectedCourse } = 
-      validateAndResolveSkillAndCourse(topicForm.skillName, topicForm.courseName);
+      validateAndResolveSkillAndCourse(true); // Workflow context
 
     if (!isValid) return;
-
-    // 9. Add console logs before saving:
-    console.log({
-      workflowSkill,
-      workflowCourse,
-      topicForm,
-      selectedSkill,
-      selectedCourse,
-      finalSkillName,
-      finalCourseName
-    });
 
     const topicData = {
       ...topicForm,
@@ -422,6 +428,12 @@ export default function AdminDashboard() {
       published: topicForm.published !== false,
       featured: topicForm.featured === true,
     };
+
+    console.log("[DEBUG 12. BEFORE FIRESTORE SAVE - Workflow Editor]", {
+      isNewTopicMode,
+      workflowTopicId,
+      documentToWrite: topicData
+    });
 
     if (isNewTopicMode) {
       await addTopic(topicData);
@@ -433,6 +445,10 @@ export default function AdminDashboard() {
     } else {
       alert("No active topic selected to save. Please toggle 'Create New Topic' or select a topic.");
     }
+
+    console.log("[DEBUG 13. AFTER FIRESTORE SAVE - Workflow Editor]", {
+      savedDocument: topicData
+    });
   };
 
   // 1. Pre-fill workflow skill selector on mount
@@ -449,10 +465,15 @@ export default function AdminDashboard() {
         .filter(c => skillMatches(c, workflowSkill))
         .map(c => c.title || c.name);
       if (coursesInSkill.length > 0) {
-        setWorkflowCourse(coursesInSkill[0]);
+        const isCurrentValid = coursesInSkill.some(name => courseMatches(name, workflowCourse));
+        if (!isCurrentValid) {
+          setWorkflowCourse(coursesInSkill[0]);
+        }
       } else {
         setWorkflowCourse("");
       }
+    } else {
+      setWorkflowCourse("");
     }
   }, [workflowSkill, courses]);
 
@@ -471,6 +492,8 @@ export default function AdminDashboard() {
       } else if (!isNewTopicMode) {
         setWorkflowTopicId("");
       }
+    } else if (!isNewTopicMode) {
+      setWorkflowTopicId("");
     }
   }, [workflowSkill, workflowCourse, topics, isNewTopicMode]);
 
@@ -508,6 +531,35 @@ export default function AdminDashboard() {
         setYoutubeError("");
       }
     } else if (isNewTopicMode) {
+      setTopicForm({
+        title: "",
+        duration: "15 mins",
+        videoUrl: "",
+        difficulty: "Beginner",
+        skillName: workflowSkill,
+        courseName: workflowCourse,
+        shortDescription: "",
+        thumbnailUrl: "",
+        youtubePlaylistLink: "",
+        certificateLink: "",
+        officialWebsiteLink: "",
+        notesPdfLink: "",
+        assignmentPdf: "",
+        projectFile: "",
+        downloadLink: "",
+        businessApplication: "",
+        incomeOpportunity: "",
+        islamicInsights: "",
+        nextTopic: "",
+        prerequisites: "",
+        tags: "",
+        featured: true,
+        published: true
+      });
+      setFetchedTitle("");
+      setYoutubeError("");
+    } else if (!workflowTopicId && !isNewTopicMode) {
+      // Clear form when no topics exist in the current selection and we aren't in new topic mode
       setTopicForm({
         title: "",
         duration: "15 mins",
