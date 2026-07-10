@@ -792,7 +792,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const trackCode = courseName.split(" ").map(w => w[0]).join("");
     const certId = `LOA-${randomNum}-${trackCode}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent("https://loa.academy/verify/" + certId)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent("https://legacy-of-auf-academy.web.app/verify/" + certId)}`;
     
     const newCert = {
       id: certId,
