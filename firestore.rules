@@ -55,30 +55,30 @@ service cloud.firestore {
 
     // Student Collections
     match /students/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read, write: if isOwner(uid) || isAdmin();
 
       match /progress/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
 
       match /bookmarks/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
 
       match /notes/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
 
       match /quizScores/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
 
       match /notifications/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
 
       match /sent_emails/{doc} {
-        allow read, write: if isOwner(uid);
+        allow read, write: if isOwner(uid) || isAdmin();
       }
     }
 
@@ -93,6 +93,10 @@ service cloud.firestore {
 
     match /submissions/{document} {
       allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
