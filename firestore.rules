@@ -1,8 +1,98 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // Helper functions
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in [
+        "basitkkk79@gmail.com"
+      ];
+    }
+
+    // Public Read Only Collections
+    match /courses/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /skills/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /topics/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /learningPaths/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /projects/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /blogArticles/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /challenges/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Student Collections
+    match /students/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /progress/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /bookmarks/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /notes/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /quizScores/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /notifications/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /sent_emails/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Admin Collections
+    match /quizzes/{document} {
+      allow read, write: if isAdmin();
+    }
+
+    match /certificates/{document} {
+      allow read, write: if isAdmin();
+    }
+
+    match /submissions/{document} {
+      allow read, write: if isAdmin();
     }
   }
 }
