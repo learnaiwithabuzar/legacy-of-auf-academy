@@ -30,7 +30,7 @@ import {
 import { db, auth } from "../lib/firebase";
 
 // Configurable list of authorized administrator email addresses (Firebase Authentication)
-export const ADMIN_EMAILS = ["khanabuzar7070@gmail.com"];
+export const ADMIN_EMAILS = ["basitkkk79@gmail.com"];
 
 export enum OperationType {
   CREATE = 'create',
