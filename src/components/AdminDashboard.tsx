@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { useCMS, parseCSV } from "../store/cmsStore";
+import { useCMS, parseCSV, ADMIN_EMAILS } from "../store/cmsStore";
 import { Topic, Skill } from "../types";
 import { aiProvider } from "../services/aiProvider";
 import { 
@@ -101,6 +101,8 @@ export default function AdminDashboard() {
     isAdmin,
     loginAsAdmin,
     logoutAdmin,
+    signInWithEmail,
+    currentUser,
     quizzes,
     addQuizQuestion,
     submissions,
@@ -109,6 +111,7 @@ export default function AdminDashboard() {
   } = useCMS();
 
   // Auth States
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
@@ -225,15 +228,30 @@ export default function AdminDashboard() {
     }
   }, [skills]);
 
-  // Auth Form Handler
-  const handleLogin = (e: React.FormEvent) => {
+  // Auth Form Handler using Firebase Authentication for secure admin access
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = loginAsAdmin(password);
-    if (success) {
-      setAuthError("");
+    setAuthError("");
+    
+    const lowerEmail = email.trim().toLowerCase();
+    if (!ADMIN_EMAILS.includes(lowerEmail)) {
+      setAuthError("Access Denied: This email address is not registered as an administrator.");
+      return;
+    }
+
+    try {
+      await signInWithEmail(lowerEmail, password);
       setPassword("");
-    } else {
-      setAuthError("Incorrect password. Please use 'aufadmin786' or 'admin'.");
+    } catch (err: any) {
+      console.error("Admin sign in failed:", err);
+      // Treat auth error gracefully
+      let errMsg = "Failed to authenticate. Please check your credentials.";
+      if (err?.code === "auth/invalid-credential" || err?.code === "auth/wrong-password" || err?.code === "auth/user-not-found" || err?.code === "auth/invalid-email") {
+        errMsg = "Incorrect password or email. Please verify your administrative credentials.";
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setAuthError(errMsg);
     }
   };
 
@@ -909,19 +927,35 @@ export default function AdminDashboard() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block font-serif text-xs font-semibold text-gold uppercase tracking-wider mb-2">
-                Administration Code
+                Admin Email
+              </label>
+              <input
+                id="admin-email-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@example.com"
+                className="w-full rounded-lg border border-gold/20 bg-black/60 px-4 py-3 font-sans text-sm text-white focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block font-serif text-xs font-semibold text-gold uppercase tracking-wider mb-2">
+                Password
               </label>
               <input
                 id="admin-password-input"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter secret passphrase..."
-                className="w-full rounded-lg border border-gold/20 bg-black/60 px-4 py-3 font-mono text-sm text-white text-center tracking-widest focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
-                autoFocus
+                placeholder="••••••••"
+                className="w-full rounded-lg border border-gold/20 bg-black/60 px-4 py-3 font-sans text-sm text-white focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+                required
               />
               <span className="block mt-2 font-sans text-[10px] text-neutral-500 text-center">
-                Default credentials for development is: <code className="text-gold">admin</code> or <code className="text-gold">aufadmin786</code>
+                Configure your administrator email and password in Firebase Authentication.
               </span>
             </div>
 

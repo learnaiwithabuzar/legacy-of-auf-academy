@@ -29,6 +29,9 @@ import {
 } from "firebase/auth";
 import { db, auth } from "../lib/firebase";
 
+// Configurable list of authorized administrator email addresses (Firebase Authentication)
+export const ADMIN_EMAILS = ["basitkkk79@gmail.com"];
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -374,7 +377,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [challenges, setChallenges] = useState<BusinessChallenge[]>(CHALLENGES_DATA);
   const [courses, setCourses] = useState<Course[]>(defaultCoursesList);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return localStorage.getItem("loa_is_admin") === "true";
+    // Determine admin privilege initially from current authenticated user, no longer using localStorage
+    return auth.currentUser?.email ? ADMIN_EMAILS.includes(auth.currentUser.email.toLowerCase()) : false;
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -754,7 +758,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
       if (user) {
         setupSubscriptions(user.uid);
+        // Securely verify admin access against the configurable list of admin emails on state change
+        const isUserAdmin = user.email ? ADMIN_EMAILS.includes(user.email.toLowerCase()) : false;
+        setIsAdmin(isUserAdmin);
       } else {
+        setIsAdmin(false);
         let guestId = localStorage.getItem("loa_student_id");
         if (!guestId) {
           guestId = `student-${Math.random().toString(36).substring(2, 11)}`;
@@ -1546,19 +1554,16 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }
   }, [skills, topics]);
 
-  // Auth Operations
+  // Auth Operations - Refactored for security. Deprecated password-based fallback.
   const loginAsAdmin = (password: string): boolean => {
-    if (password === "aufadmin786" || password === "admin") {
-      setIsAdmin(true);
-      localStorage.setItem("loa_is_admin", "true");
-      return true;
-    }
+    console.warn("loginAsAdmin is deprecated for security. Administration is secured with Firebase Auth.");
     return false;
   };
 
   const logoutAdmin = () => {
+    // Properly log out from Firebase Auth to revoke admin privileges instead of clearing localStorage
+    signOut(auth).catch((err) => console.error("Error signing out admin:", err));
     setIsAdmin(false);
-    localStorage.removeItem("loa_is_admin");
   };
 
   // --- SKILLS CRUD ---
