@@ -682,19 +682,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setSubmissions([]);
     });
 
-    const quizzesCollRef = collection(db, "quizzes");
-    const unsubQuizzes = onSnapshot(quizzesCollRef, (snap) => {
-      const list: LessonQuiz[] = [];
-      snap.forEach((d) => list.push(d.data() as LessonQuiz));
-      if (list.length > 0) {
-        setQuizzes(list);
-      } else {
-        seedDefaultQuizzes();
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "quizzes");
-      setQuizzes([]);
-    });
+
 
     const skillsCollRef = collection(db, "skills");
     const unsubSkills = onSnapshot(skillsCollRef, (snap) => {
@@ -775,7 +763,6 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (activeUnsubscribe) activeUnsubscribe();
       unsubSubmissions();
-      unsubQuizzes();
       unsubSkills();
       unsubTopics();
       unsubPaths();
@@ -784,6 +771,32 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       unsubAuth();
     };
   }, []);
+
+  // Listen to quizzes only if the authenticated user is an administrator to prevent Security Rules permission errors for students.
+  useEffect(() => {
+    if (!isAdmin) {
+      setQuizzes([]);
+      return;
+    }
+
+    const quizzesCollRef = collection(db, "quizzes");
+    const unsubQuizzes = onSnapshot(quizzesCollRef, (snap) => {
+      const list: LessonQuiz[] = [];
+      snap.forEach((d) => list.push(d.data() as LessonQuiz));
+      if (list.length > 0) {
+        setQuizzes(list);
+      } else {
+        seedDefaultQuizzes();
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "quizzes");
+      setQuizzes([]);
+    });
+
+    return () => {
+      unsubQuizzes();
+    };
+  }, [isAdmin]);
 
   const updateStudentProfile = async (profileData: Partial<StudentProfile>) => {
     if (!studentProfile) return;
