@@ -672,18 +672,6 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Global collection listeners
-    const globalSubmissionsRef = collection(db, "submissions");
-    const unsubSubmissions = onSnapshot(globalSubmissionsRef, (snap) => {
-      const list: ProjectSubmission[] = [];
-      snap.forEach((d) => list.push(d.data() as ProjectSubmission));
-      setSubmissions(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "submissions");
-      setSubmissions([]);
-    });
-
-
-
     const skillsCollRef = collection(db, "skills");
     const unsubSkills = onSnapshot(skillsCollRef, (snap) => {
       const list: Skill[] = [];
@@ -730,17 +718,6 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setCourses([]);
     });
 
-    // Global certificates listener
-    const certCollRef = collection(db, "certificates");
-    const unsubCertificates = onSnapshot(certCollRef, (snap) => {
-      const list: any[] = [];
-      snap.forEach((d) => list.push(d.data()));
-      setCertificates(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "certificates");
-      setCertificates([]);
-    });
-
     // Listen to Firebase Auth state
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -762,20 +739,21 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       if (activeUnsubscribe) activeUnsubscribe();
-      unsubSubmissions();
       unsubSkills();
       unsubTopics();
       unsubPaths();
       unsubCourses();
-      unsubCertificates();
       unsubAuth();
     };
   }, []);
 
-  // Listen to quizzes only if the authenticated user is an administrator to prevent Security Rules permission errors for students.
+  // Listen to admin-only collections (quizzes, submissions, certificates) only if the authenticated user is an administrator
+  // to prevent Security Rules PERMISSION_DENIED errors for students.
   useEffect(() => {
     if (!isAdmin) {
       setQuizzes([]);
+      setSubmissions([]);
+      setCertificates([]);
       return;
     }
 
@@ -793,8 +771,30 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setQuizzes([]);
     });
 
+    const globalSubmissionsRef = collection(db, "submissions");
+    const unsubSubmissions = onSnapshot(globalSubmissionsRef, (snap) => {
+      const list: ProjectSubmission[] = [];
+      snap.forEach((d) => list.push(d.data() as ProjectSubmission));
+      setSubmissions(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "submissions");
+      setSubmissions([]);
+    });
+
+    const certCollRef = collection(db, "certificates");
+    const unsubCertificates = onSnapshot(certCollRef, (snap) => {
+      const list: any[] = [];
+      snap.forEach((d) => list.push(d.data()));
+      setCertificates(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "certificates");
+      setCertificates([]);
+    });
+
     return () => {
       unsubQuizzes();
+      unsubSubmissions();
+      unsubCertificates();
     };
   }, [isAdmin]);
 
